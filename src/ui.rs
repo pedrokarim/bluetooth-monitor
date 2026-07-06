@@ -1628,19 +1628,49 @@ fn nearby_list_card(
                             .color(theme.text_dim),
                     );
                 });
-                return;
+            } else {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .max_height(target_h - 200.0)
+                    .show(ui, |ui| {
+                        for (i, d) in nearby.iter().enumerate() {
+                            nearby_row(ui, d, theme, state);
+                            if i + 1 < nearby.len() {
+                                hairline(ui, theme);
+                            }
+                        }
+                    });
             }
 
-            egui::ScrollArea::vertical()
-                .auto_shrink([false; 2])
-                .show(ui, |ui| {
-                    for (i, d) in nearby.iter().enumerate() {
-                        nearby_row(ui, d, theme, state);
-                        if i + 1 < nearby.len() {
-                            hairline(ui, theme);
-                        }
-                    }
-                });
+            // Tip card — always visible at the bottom of the right column
+            ui.add_space(12.0);
+            tip_card(ui, theme);
+        });
+}
+
+fn tip_card(ui: &mut Ui, theme: &Theme) {
+    let tint = Color32::from_rgba_unmultiplied(theme.teal.r(), theme.teal.g(), theme.teal.b(), 22);
+    let stroke = Color32::from_rgba_unmultiplied(theme.teal.r(), theme.teal.g(), theme.teal.b(), 90);
+    egui::Frame::none()
+        .fill(tint)
+        .stroke(Stroke::new(1.0, stroke))
+        .rounding(Rounding::same(theme.card_radius.min(14.0)))
+        .inner_margin(Margin::symmetric(14.0, 12.0))
+        .show(ui, |ui| {
+            ui.label(
+                RichText::new("A QUIET NOTE")
+                    .font(f_sb(10.0))
+                    .color(theme.teal),
+            );
+            ui.add_space(4.0);
+            ui.label(
+                RichText::new(
+                    "Not seeing your device? Put it in pairing mode first — \
+                     usually a long press on its pair button until the LED blinks.",
+                )
+                .font(f_reg(11.5))
+                .color(theme.text_muted),
+            );
         });
 }
 
@@ -1743,6 +1773,8 @@ fn detail(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
             ui.add_space(14.0);
             detail_metrics(ui, &device, &theme);
             ui.add_space(14.0);
+            detail_signal_chart(ui, &device, &theme, state);
+            ui.add_space(14.0);
             detail_info(ui, &device, &theme);
             ui.add_space(14.0);
             detail_actions(ui, &device, &theme, state);
@@ -1752,6 +1784,111 @@ fn detail(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
                 detail_services(ui, &device, &theme);
             }
         });
+}
+
+/// Line chart of the last ~3 minutes of RSSI samples for this device.
+fn detail_signal_chart(ui: &mut Ui, d: &DeviceInfo, theme: &Theme, state: &AppState) {
+    let samples: Vec<i16> = {
+        let hist = state.rssi_history.lock().unwrap();
+        hist.get(&d.address).map(|q| q.iter().copied().collect()).unwrap_or_default()
+    };
+
+    egui::Frame::none()
+        .fill(theme.card)
+        .stroke(Stroke::new(1.0, theme.card_outline))
+        .rounding(Rounding::same(theme.card_radius.min(16.0)))
+        .inner_margin(Margin::symmetric(20.0, 14.0))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("SIGNAL — LAST 60 SAMPLES").font(f_sb(10.0)).color(theme.text_dim));
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    if let Some(last) = samples.last() {
+                        ui.label(
+                            RichText::new(format!("{last} dBm"))
+                                .font(f_sb(11.0))
+                                .color(theme.rssi_color(*last)),
+                        );
+                    } else {
+                        ui.label(RichText::new("no readings yet").font(f_reg(10.5)).color(theme.text_dim));
+                    }
+                });
+            });
+            ui.add_space(8.0);
+
+            let chart_h = 70.0;
+            let (rect, _) = ui.allocate_exact_size(
+                egui::vec2(ui.available_width(), chart_h),
+                Sense::hover(),
+            );
+            paint_sparkline(ui, rect, &samples, theme);
+        });
+}
+
+fn paint_sparkline(ui: &Ui, rect: Rect, samples: &[i16], theme: &Theme) {
+    let painter = ui.painter();
+
+    // Baseline grid (dashed-ish horizontal lines at -50 / -70 / -90)
+    let grid = theme.card_outline;
+    let range_top = -30.0f32;
+    let range_bot = -100.0f32;
+    for guide_dbm in [-50.0f32, -70.0f32, -90.0f32] {
+        let t = (guide_dbm - range_top) / (range_bot - range_top);
+        let y = rect.min.y + rect.height() * t;
+        painter.line_segment(
+            [egui::pos2(rect.min.x, y), egui::pos2(rect.max.x, y)],
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(grid.r(), grid.g(), grid.b(), 60)),
+        );
+        painter.text(
+            egui::pos2(rect.min.x + 4.0, y - 8.0),
+            Align2::LEFT_TOP,
+            format!("{}", guide_dbm as i16),
+            f_mono(9.0),
+            theme.text_dim,
+        );
+    }
+
+    if samples.len() < 2 {
+        painter.text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            "collecting samples…",
+            f_reg(10.5),
+            theme.text_dim,
+        );
+        return;
+    }
+
+    // Map each sample to a point in the chart
+    let n = samples.len();
+    let x_step = rect.width() / (n as f32 - 1.0).max(1.0);
+    let map_y = |v: i16| -> f32 {
+        let clamped = (v as f32).clamp(range_bot, range_top);
+        let t = (clamped - range_top) / (range_bot - range_top);
+        rect.min.y + rect.height() * t
+    };
+
+    let line_color = theme.rssi_color(*samples.last().unwrap());
+    let pts: Vec<Pos2> = samples
+        .iter()
+        .enumerate()
+        .map(|(i, v)| Pos2::new(rect.min.x + i as f32 * x_step, map_y(*v)))
+        .collect();
+
+    // Filled area under the line
+    let mut fill_pts = pts.clone();
+    fill_pts.push(Pos2::new(rect.max.x, rect.max.y));
+    fill_pts.push(Pos2::new(rect.min.x, rect.max.y));
+    let fill_color = Color32::from_rgba_unmultiplied(line_color.r(), line_color.g(), line_color.b(), 30);
+    painter.add(Shape::convex_polygon(fill_pts, fill_color, Stroke::NONE));
+
+    // The line itself
+    painter.add(Shape::line(pts.clone(), Stroke::new(1.6, line_color)));
+
+    // Last-point dot
+    if let Some(&last_pt) = pts.last() {
+        painter.circle_filled(last_pt, 3.0, line_color);
+        painter.circle_stroke(last_pt, 5.0, Stroke::new(1.0, line_color.linear_multiply(0.5)));
+    }
 }
 
 fn detail_hero(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {

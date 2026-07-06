@@ -168,10 +168,33 @@ fn spawn_discovery(state: AppState, adapter: Adapter) -> tokio::task::JoinHandle
     })
 }
 
+const RSSI_HISTORY_MAX: usize = 60;
+
 async fn refresh(state: &AppState, adapter: &Adapter) {
     *state.last_refresh.lock().unwrap() = Some(std::time::Instant::now());
     match collect_devices(adapter).await {
         Ok(list) => {
+            // Append this refresh's RSSI reading to each device's rolling history
+            // (only for connected devices — disconnected devices report None RSSI).
+            {
+                let mut hist = state.rssi_history.lock().unwrap();
+                for d in &list {
+                    if d.connected {
+                        let entry = hist
+                            .entry(d.address.clone())
+                            .or_insert_with(|| std::collections::VecDeque::with_capacity(RSSI_HISTORY_MAX));
+                        // Push either the RSSI or the previous value (so gaps carry over)
+                        if let Some(rssi) = d.rssi {
+                            entry.push_back(rssi);
+                        } else if let Some(&last) = entry.back() {
+                            entry.push_back(last);
+                        }
+                        while entry.len() > RSSI_HISTORY_MAX {
+                            entry.pop_front();
+                        }
+                    }
+                }
+            }
             *state.devices.lock().unwrap() = list;
             *state.last_error.lock().unwrap() = None;
             let powered = adapter.is_powered().await.unwrap_or(false);

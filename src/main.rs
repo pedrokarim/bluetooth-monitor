@@ -5,6 +5,7 @@ mod theme;
 mod tray;
 mod ui;
 
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -30,6 +31,8 @@ pub struct AppState {
     pub scanning: Arc<AtomicBool>,
     pub scan_started: Arc<Mutex<Option<std::time::Instant>>>,
     pub last_refresh: Arc<Mutex<Option<std::time::Instant>>>,
+    /// Sliding window of the last RSSI samples per device address.
+    pub rssi_history: Arc<Mutex<HashMap<String, VecDeque<i16>>>>,
 }
 
 fn main() -> eframe::Result<()> {
@@ -52,6 +55,7 @@ fn main() -> eframe::Result<()> {
         scanning: Arc::new(AtomicBool::new(false)),
         scan_started: Arc::new(Mutex::new(None)),
         last_refresh: Arc::new(Mutex::new(None)),
+        rssi_history: Arc::new(Mutex::new(HashMap::new())),
     };
 
     let backend_state = state.clone();
