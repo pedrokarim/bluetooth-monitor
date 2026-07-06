@@ -1140,164 +1140,222 @@ fn device_row(
     theme: &Theme,
     chevron_tex: Option<&egui::TextureHandle>,
 ) -> bool {
-    // Reserve the whole row rect up front so we can (a) sense clicks anywhere
-    // on it and (b) paint a hover tint under the content.
-    let full_rect = ui.available_rect_before_wrap();
-    let row_rect = Rect::from_min_size(full_rect.min, egui::vec2(full_rect.width(), 58.0));
-    let row_id = ui.id().with(("row", d.address.as_str()));
-    let row_resp = ui.interact(row_rect, row_id, Sense::click());
-    if row_resp.hovered() {
-        ui.painter().rect_filled(
-            row_rect.expand2(egui::vec2(4.0, 0.0)),
-            Rounding::same(theme.card_radius.min(10.0)),
-            Color32::from_rgba_unmultiplied(255, 255, 255, 8),
+    let mut open_detail = false;
+
+    // Fixed row height. Every visible element pins to the row's single
+    // centre-line, so alignment is deterministic instead of chasing egui's
+    // nested-layout heuristics.
+    const ROW_H: f32 = 60.0;
+    const DOT_W: f32 = 16.0;
+    const CHEVRON_W: f32 = 28.0;
+    const ACTION_W: f32 = 100.0;
+    const BAR_W: f32 = 36.0;
+    const PCT_W: f32 = 34.0;
+    const BATTERY_W: f32 = BAR_W + 8.0 + PCT_W; // bar + gap + text
+    const GAP: f32 = 12.0;
+    const BTN_H: f32 = 30.0;
+
+    let full_w = ui.available_width();
+    let (row_rect, _) = ui.allocate_exact_size(egui::vec2(full_w, ROW_H), Sense::hover());
+    let cy = row_rect.center().y;
+
+    // Column x-coordinates, laid out right-to-left so the info block gets
+    // whatever remains on the left.
+    let chevron_right = row_rect.right();
+    let chevron_left = chevron_right - CHEVRON_W;
+    let action_right = chevron_left - GAP;
+    let action_left = action_right - ACTION_W;
+    let battery_right = action_left - GAP;
+    let battery_left = battery_right - BATTERY_W;
+    let info_left = row_rect.left() + DOT_W + GAP;
+    let info_right = battery_left - GAP;
+    let info_w = (info_right - info_left).max(60.0);
+
+    // ── Dot ────────────────────────────────────────────────────────────
+    let dot_center = egui::pos2(row_rect.left() + DOT_W / 2.0, cy);
+    let painter = ui.painter().clone();
+    if d.connected {
+        painter.circle_filled(dot_center, 6.0, accent);
+    } else {
+        painter.circle_stroke(dot_center, 5.5, Stroke::new(1.5, theme.text_dim));
+    }
+
+    // ── Info block: name (line 1) + address + tags (line 2) ────────────
+    let name_color = if d.connected {
+        theme.text
+    } else {
+        theme.text_muted
+    };
+    let name_text = format!("{} {}", device_emoji(d.icon.as_deref()), &d.name);
+    let name_font = f_med(13.5);
+    let addr_font = f_mono(10.0);
+    let tag_font = f_sb(9.0);
+    let line_gap = 4.0;
+
+    let name_galley = ui.fonts(|f| f.layout(name_text, name_font.clone(), name_color, info_w));
+    let addr_galley = ui.fonts(|f| {
+        f.layout(
+            d.address.clone(),
+            addr_font.clone(),
+            theme.text_dim,
+            info_w,
+        )
+    });
+    let stack_h = name_galley.size().y + line_gap + addr_galley.size().y;
+    let name_top = cy - stack_h / 2.0;
+    let addr_top = name_top + name_galley.size().y + line_gap;
+
+    // Truncate name if it doesn't fit — draw the galley clipped
+    painter.galley(egui::pos2(info_left, name_top), name_galley.clone(), name_color);
+
+    // Address line — mono then optional TRUSTED / BLOCKED tags to its right
+    let addr_w = addr_galley.size().x;
+    painter.galley(
+        egui::pos2(info_left, addr_top),
+        addr_galley.clone(),
+        theme.text_dim,
+    );
+    let mut tag_cursor = info_left + addr_w + 8.0;
+    let addr_baseline = addr_top + addr_galley.size().y / 2.0;
+    if d.trusted {
+        let g = ui.fonts(|f| f.layout_no_wrap("· TRUSTED".into(), tag_font.clone(), theme.purple));
+        painter.galley(
+            egui::pos2(tag_cursor, addr_baseline - g.size().y / 2.0),
+            g.clone(),
+            theme.purple,
+        );
+        tag_cursor += g.size().x + 6.0;
+    }
+    if d.blocked {
+        let g = ui.fonts(|f| f.layout_no_wrap("· BLOCKED".into(), tag_font.clone(), theme.red));
+        painter.galley(
+            egui::pos2(tag_cursor, addr_baseline - g.size().y / 2.0),
+            g,
+            theme.red,
         );
     }
-    let mut open_detail = row_resp.clicked();
 
-    // Fixed widths for the right-hand columns so nothing can bleed into the
-    // name column when a name is long.
-    let chevron_w = 24.0;
-    let action_w = 96.0;
-    let battery_w = 62.0;
-    let gap = 10.0;
-    let total_right = chevron_w + gap + action_w + gap + battery_w + gap;
-    let inner = ui.allocate_ui_with_layout(
-        egui::vec2(ui.available_width(), 58.0),
-        Layout::left_to_right(Align::Center),
-        |ui| {
-            let (dot, _) = ui.allocate_exact_size(egui::vec2(14.0, 14.0), Sense::hover());
-            if d.connected {
-                ui.painter().circle_filled(dot.center(), 6.0, accent);
-            } else {
-                ui.painter()
-                    .circle_stroke(dot.center(), 5.5, Stroke::new(1.5, theme.text_dim));
-            }
-            ui.add_space(10.0);
-
-            // Info block takes whatever space is left after the fixed-width right
-            // columns. Both lines truncate with "…" instead of overflowing.
-            let info_w = (ui.available_width() - total_right).max(120.0);
-            ui.allocate_ui_with_layout(
-                egui::vec2(info_w, 0.0),
-                Layout::top_down(Align::Min),
-                |ui| {
-                    ui.style_mut().spacing.item_spacing.y = 4.0;
-                    let name_color = if d.connected {
-                        theme.text
-                    } else {
-                        theme.text_muted
-                    };
-                    ui.add(
-                        egui::Label::new(
-                            RichText::new(format!(
-                                "{} {}",
-                                device_emoji(d.icon.as_deref()),
-                                &d.name
-                            ))
-                            .font(f_med(13.5))
-                            .color(name_color),
-                        )
-                        .truncate(),
-                    );
-                    ui.horizontal(|ui| {
-                        ui.style_mut().spacing.item_spacing.x = 6.0;
-                        ui.add(
-                            egui::Label::new(
-                                RichText::new(&d.address)
-                                    .font(f_mono(10.0))
-                                    .color(theme.text_dim),
-                            )
-                            .truncate(),
-                        );
-                        if d.trusted {
-                            ui.label(
-                                RichText::new("· TRUSTED")
-                                    .font(f_sb(9.0))
-                                    .color(theme.purple),
-                            );
-                        }
-                        if d.blocked {
-                            ui.label(RichText::new("· BLOCKED").font(f_sb(9.0)).color(theme.red));
-                        }
-                    });
-                },
+    // ── Battery cell: [bar] gap "80%" — vertically centred on cy ───────
+    match d.battery {
+        Some(pct) => {
+            let bcol = theme.battery_color(pct);
+            let bar_h = 5.0;
+            let bar_rect = Rect::from_min_size(
+                egui::pos2(battery_left, cy - bar_h / 2.0),
+                egui::vec2(BAR_W, bar_h),
             );
-
-            // Battery column: % on top, thin bar below — 2-line vertical stack
-            // so this cell is narrow (~62 px). Also right-aligned to its width.
-            ui.add_space(gap);
-            ui.allocate_ui_with_layout(
-                egui::vec2(battery_w, 0.0),
-                Layout::top_down(Align::Max),
-                |ui| {
-                    ui.style_mut().spacing.item_spacing.y = 4.0;
-                    match d.battery {
-                        Some(pct) => {
-                            let bcol = theme.battery_color(pct);
-                            ui.label(
-                                RichText::new(format!("{pct}%"))
-                                    .font(f_sb(13.0))
-                                    .color(bcol),
-                            );
-                            battery_pill_sized(ui, pct, bcol, theme, battery_w);
-                        }
-                        None => {
-                            ui.label(RichText::new("—").font(f_light(15.0)).color(theme.text_dim));
-                        }
-                    }
-                },
+            painter.rect_filled(bar_rect, Rounding::same(999.0), theme.pill_track);
+            let fill_w = BAR_W * (pct as f32 / 100.0).clamp(0.0, 1.0);
+            let fill_rect = Rect::from_min_size(bar_rect.min, egui::vec2(fill_w, bar_h));
+            painter.rect_filled(fill_rect, Rounding::same(999.0), bcol);
+            painter.text(
+                egui::pos2(battery_right, cy),
+                Align2::RIGHT_CENTER,
+                format!("{pct}%"),
+                f_sb(13.0),
+                bcol,
             );
-
-            // Action button column
-            ui.add_space(gap);
-            ui.allocate_ui_with_layout(
-                egui::vec2(action_w, 0.0),
-                Layout::top_down(Align::Center),
-                |ui| {
-                    let (label, color, cmd) = if d.connected {
-                        (
-                            "Disconnect",
-                            theme.coral,
-                            Some(BluetoothCommand::Disconnect(d.address.clone())),
-                        )
-                    } else if d.paired {
-                        (
-                            "Connect",
-                            theme.teal,
-                            Some(BluetoothCommand::Connect(d.address.clone())),
-                        )
-                    } else {
-                        ("Not paired", theme.text_dim, None)
-                    };
-                    if let Some(cmd) = cmd {
-                        let btn = egui::Button::new(
-                            RichText::new(label)
-                                .font(f_sb(11.5))
-                                .color(theme.on_accent()),
-                        )
-                        .fill(color)
-                        .rounding(Rounding::same(theme.pill_radius))
-                        .stroke(Stroke::NONE);
-                        if ui.add_sized([action_w, 30.0], btn).clicked() {
-                            let _ = state.cmd_tx.send(cmd);
-                        }
-                    } else {
-                        ui.label(RichText::new(label).font(f_reg(11.0)).color(theme.text_dim));
-                    }
-                },
+        }
+        None => {
+            painter.text(
+                egui::pos2(battery_right, cy),
+                Align2::RIGHT_CENTER,
+                "—",
+                f_light(15.0),
+                theme.text_dim,
             );
+        }
+    }
 
-            // Chevron column
-            ui.add_space(gap);
-            if chevron_button(ui, chevron_tex, theme).clicked() {
-                open_detail = true;
-            }
-        },
+    // ── Action button ──────────────────────────────────────────────────
+    let btn_rect = Rect::from_min_size(
+        egui::pos2(action_left, cy - BTN_H / 2.0),
+        egui::vec2(ACTION_W, BTN_H),
     );
-    open_detail |= inner.response.interact(Sense::click()).clicked();
+    let (label, btn_color, cmd) = if d.connected {
+        (
+            "Disconnect",
+            Some(theme.coral),
+            Some(BluetoothCommand::Disconnect(d.address.clone())),
+        )
+    } else if d.paired {
+        (
+            "Connect",
+            Some(theme.teal),
+            Some(BluetoothCommand::Connect(d.address.clone())),
+        )
+    } else {
+        ("Not paired", None, None)
+    };
+    if let (Some(bg), Some(cmd)) = (btn_color, cmd) {
+        let btn_id = ui.id().with(("btn", d.address.as_str()));
+        let btn_resp = ui.interact(btn_rect, btn_id, Sense::click());
+        let actual_bg = if btn_resp.hovered() {
+            Color32::from_rgba_unmultiplied(
+                (bg.r() as f32 * 1.06).min(255.0) as u8,
+                (bg.g() as f32 * 1.06).min(255.0) as u8,
+                (bg.b() as f32 * 1.06).min(255.0) as u8,
+                255,
+            )
+        } else {
+            bg
+        };
+        painter.rect_filled(btn_rect, Rounding::same(theme.pill_radius), actual_bg);
+        painter.text(
+            btn_rect.center(),
+            Align2::CENTER_CENTER,
+            label,
+            f_sb(11.5),
+            theme.on_accent(),
+        );
+        if btn_resp.clicked() {
+            let _ = state.cmd_tx.send(cmd);
+        }
+    } else {
+        painter.text(
+            btn_rect.center(),
+            Align2::CENTER_CENTER,
+            label,
+            f_reg(11.0),
+            theme.text_dim,
+        );
+    }
 
-    inner.response.context_menu(|ui| {
+    // ── Chevron ────────────────────────────────────────────────────────
+    let chev_rect = Rect::from_min_size(
+        egui::pos2(chevron_left, cy - CHEVRON_W / 2.0),
+        egui::vec2(CHEVRON_W, CHEVRON_W),
+    );
+    let chev_id = ui.id().with(("chev", d.address.as_str()));
+    let chev_resp = ui.interact(chev_rect, chev_id, Sense::click());
+    let chev_tint = if chev_resp.hovered() {
+        theme.teal
+    } else {
+        theme.text_dim
+    };
+    if let Some(t) = chevron_tex {
+        let icon_rect = Rect::from_center_size(chev_rect.center(), egui::vec2(14.0, 14.0));
+        painter.image(
+            t.id(),
+            icon_rect,
+            Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+            chev_tint,
+        );
+    }
+    if chev_resp.clicked() {
+        open_detail = true;
+    }
+
+    // ── Row-wide click as an extra open-detail affordance + context menu.
+    // Registered LAST so the button and chevron consume clicks in their area
+    // first.
+    let row_id = ui.id().with(("row", d.address.as_str()));
+    let row_resp = ui.interact(row_rect, row_id, Sense::click());
+    if row_resp.clicked() {
+        open_detail = true;
+    }
+
+    row_resp.context_menu(|ui| {
         if ui.button("View details").clicked() {
             open_detail = true;
             ui.close_menu();
