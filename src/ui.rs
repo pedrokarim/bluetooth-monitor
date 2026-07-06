@@ -35,6 +35,7 @@ pub struct Icons {
     pub refresh: egui::TextureHandle,
     pub cog: egui::TextureHandle,
     pub radar: egui::TextureHandle,
+    pub chevron: egui::TextureHandle,
 }
 
 pub struct UiState {
@@ -85,6 +86,11 @@ pub fn load_icons(ctx: &egui::Context) -> Icons {
             ctx,
             "icon-radar",
             include_bytes!("../assets/icon-radar.png"),
+        ),
+        chevron: load_png(
+            ctx,
+            "icon-chevron",
+            include_bytes!("../assets/icon-chevron.png"),
         ),
     }
 }
@@ -1105,6 +1111,7 @@ fn device_list_card(
             }
 
             let mut ci = 0usize;
+            let chevron_tex = ui_state.icons.as_ref().map(|i| i.chevron.clone());
             for (i, d) in devices.iter().enumerate() {
                 let accent = if d.connected {
                     let c = theme.accent_for(ci);
@@ -1113,8 +1120,8 @@ fn device_list_card(
                 } else {
                     theme.text_dim
                 };
-                let resp = device_row(ui, d, accent, state, theme);
-                if resp.clicked() {
+                let open_detail = device_row(ui, d, accent, state, theme, chevron_tex.as_ref());
+                if open_detail {
                     ui_state.selected_device = Some(d.address.clone());
                     ui_state.tab = Tab::Detail;
                 }
@@ -1131,7 +1138,23 @@ fn device_row(
     accent: Color32,
     state: &AppState,
     theme: &Theme,
-) -> egui::Response {
+    chevron_tex: Option<&egui::TextureHandle>,
+) -> bool {
+    // Reserve the whole row rect up front so we can (a) sense clicks anywhere
+    // on it and (b) paint a hover tint under the content.
+    let full_rect = ui.available_rect_before_wrap();
+    let row_rect = Rect::from_min_size(full_rect.min, egui::vec2(full_rect.width(), 58.0));
+    let row_id = ui.id().with(("row", d.address.as_str()));
+    let row_resp = ui.interact(row_rect, row_id, Sense::click());
+    if row_resp.hovered() {
+        ui.painter().rect_filled(
+            row_rect.expand2(egui::vec2(4.0, 0.0)),
+            Rounding::same(theme.card_radius.min(10.0)),
+            Color32::from_rgba_unmultiplied(255, 255, 255, 8),
+        );
+    }
+    let mut open_detail = row_resp.clicked();
+
     let inner = ui.allocate_ui_with_layout(
         egui::vec2(ui.available_width(), 58.0),
         Layout::left_to_right(Align::Center),
@@ -1184,8 +1207,12 @@ fn device_row(
                 },
             );
 
+            let mut chevron_clicked = false;
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.style_mut().spacing.item_spacing.x = 8.0;
+                // Chevron — rightmost, always visible, explicit "open detail" affordance.
+                chevron_clicked = chevron_button(ui, chevron_tex, theme).clicked();
+
                 let (label, color, cmd) = if d.connected {
                     (
                         "Disconnect",
@@ -1224,11 +1251,19 @@ fn device_row(
                     }
                 }
             });
+            if chevron_clicked {
+                open_detail = true;
+            }
         },
     );
-    let response = inner.response.interact(Sense::click());
+    open_detail |= inner.response.interact(Sense::click()).clicked();
 
-    response.context_menu(|ui| {
+    inner.response.context_menu(|ui| {
+        if ui.button("View details").clicked() {
+            open_detail = true;
+            ui.close_menu();
+        }
+        ui.separator();
         let trust_label = if d.trusted { "Untrust" } else { "Trust" };
         if ui.button(trust_label).clicked() {
             let _ = state
@@ -1255,7 +1290,41 @@ fn device_row(
         }
     });
 
-    response
+    open_detail
+}
+
+/// A small chevron-right button rendered in the row's rightmost slot.
+fn chevron_button(
+    ui: &mut Ui,
+    tex: Option<&egui::TextureHandle>,
+    theme: &Theme,
+) -> egui::Response {
+    let size = egui::vec2(28.0, 28.0);
+    let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
+    let painter = ui.painter();
+    let bg = if resp.hovered() {
+        theme.card_strong
+    } else {
+        Color32::TRANSPARENT
+    };
+    let tint = if resp.hovered() {
+        theme.teal
+    } else {
+        theme.text_dim
+    };
+    if bg != Color32::TRANSPARENT {
+        painter.rect_filled(rect, Rounding::same(theme.chip_radius.min(14.0)), bg);
+    }
+    if let Some(t) = tex {
+        let icon_rect = Rect::from_center_size(rect.center(), egui::vec2(14.0, 14.0));
+        painter.image(
+            t.id(),
+            icon_rect,
+            Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+            tint,
+        );
+    }
+    resp
 }
 
 fn pill_button(ui: &mut Ui, label: &str, color: Color32, theme: &Theme) -> egui::Response {
