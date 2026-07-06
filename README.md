@@ -69,11 +69,57 @@ the app works even without a tray.
 
 ## Install
 
-### From source
+### Prebuilt binary (Linux x86_64)
+
+Grab the latest tar.gz from
+[Releases](https://github.com/pedrokarim/bluetooth-monitor/releases) and
+run it directly:
+
+```bash
+tar -xzf bluetooth-monitor-*-linux-x86_64.tar.gz
+./bluetooth-monitor-*-linux-x86_64
+```
+
+### From source with `install.sh` (user-space, no sudo)
 
 ```bash
 git clone https://github.com/pedrokarim/bluetooth-monitor.git
 cd bluetooth-monitor
+./install.sh
+```
+
+This builds a release binary and installs everything under `~/.local`:
+
+| File | Path |
+|---|---|
+| Binary | `~/.local/bin/bluetooth-monitor` |
+| Desktop entry | `~/.local/share/applications/bluetooth-monitor.desktop` |
+| Icon | `~/.local/share/icons/hicolor/512x512/apps/bluetooth-monitor.png` |
+| Autostart (if enabled) | `~/.config/autostart/bluetooth-monitor.desktop` |
+| User config | `~/.config/bt-monitor/config.toml` |
+
+Once installed, launch from your desktop menu (search **Bluetooth Monitor**)
+or from a shell with `bluetooth-monitor`.
+
+To uninstall:
+
+```bash
+./install.sh --uninstall
+```
+
+### Or use the Makefile
+
+```bash
+make                   # release build
+make install-with-build
+make uninstall
+make run               # build + launch
+make check             # what CI runs
+```
+
+### Build only
+
+```bash
 cargo build --release
 ./target/release/bluetooth-monitor
 ```

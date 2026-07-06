@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Bluetooth Monitor
+GenericName=Bluetooth Device Dashboard
+Comment=Live dashboard for Bluetooth devices — battery, signal, discovery
+Exec=bluetooth-monitor
+Icon=bluetooth-monitor
+Terminal=false
+StartupNotify=true
+StartupWMClass=bluetooth-monitor
+Categories=Network;System;Utility;
+Keywords=bluetooth;bt;devices;battery;bluez;

@@ -1,3 +1,4 @@
+mod autostart;
 mod bluetooth;
 mod config;
 mod fonts;
@@ -38,7 +39,15 @@ pub struct AppState {
 fn main() -> eframe::Result<()> {
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
 
-    let config = Config::load();
+    let mut config = Config::load();
+    // Reconcile config.autostart with the actual .desktop file on disk. The
+    // filesystem wins — if the user removed the file manually, the toggle
+    // should reflect that on next launch.
+    let real_autostart = autostart::is_enabled();
+    if config.autostart != real_autostart {
+        config.autostart = real_autostart;
+        config.save();
+    }
     let initial_theme = config.theme;
 
     let state = AppState {

@@ -1962,12 +1962,14 @@ fn detail_signal_chart(ui: &mut Ui, d: &DeviceInfo, theme: &Theme, state: &AppSt
         hist.get(&d.address).map(|q| q.iter().copied().collect()).unwrap_or_default()
     };
 
+    let full_w = ui.available_width();
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
         .rounding(Rounding::same(theme.card_radius.min(16.0)))
         .inner_margin(Margin::symmetric(20.0, 14.0))
         .show(ui, |ui| {
+            ui.set_min_width(full_w - 8.0);
             ui.horizontal(|ui| {
                 ui.label(RichText::new("SIGNAL — LAST 60 SAMPLES").font(f_sb(10.0)).color(theme.text_dim));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -2061,12 +2063,14 @@ fn paint_sparkline(ui: &Ui, rect: Rect, samples: &[i16], theme: &Theme) {
 }
 
 fn detail_hero(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
+    let full_w = ui.available_width();
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
-        .rounding(Rounding::same(20.0))
+        .rounding(Rounding::same(theme.card_radius.min(20.0)))
         .inner_margin(Margin::symmetric(22.0, 18.0))
         .show(ui, |ui| {
+            ui.set_min_width(full_w - 8.0);
             ui.horizontal(|ui| {
                 // Avatar tile
                 let (avatar, _) = ui.allocate_exact_size(egui::vec2(56.0, 56.0), Sense::hover());
@@ -2187,12 +2191,14 @@ fn metric_cell(ui: &mut Ui, theme: &Theme, label: &str, value: String, unit: &st
 }
 
 fn detail_info(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
+    let full_w = ui.available_width();
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
-        .rounding(Rounding::same(16.0))
+        .rounding(Rounding::same(theme.card_radius.min(16.0)))
         .inner_margin(Margin::symmetric(20.0, 14.0))
         .show(ui, |ui| {
+            ui.set_min_width(full_w - 8.0);
             ui.label(
                 RichText::new("PROPERTIES")
                     .font(f_sb(10.0))
@@ -2314,25 +2320,38 @@ fn ghost_btn(ui: &mut Ui, label: &str, theme: &Theme) -> egui::Response {
 }
 
 fn detail_services(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
+    let full_w = ui.available_width();
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
-        .rounding(Rounding::same(16.0))
+        .rounding(Rounding::same(theme.card_radius.min(16.0)))
         .inner_margin(Margin::symmetric(20.0, 14.0))
         .show(ui, |ui| {
-            ui.label(
-                RichText::new("SERVICES")
-                    .font(f_sb(10.0))
-                    .color(theme.text_dim),
-            );
-            ui.add_space(6.0);
-            egui::ScrollArea::vertical()
-                .max_height(200.0)
-                .show(ui, |ui| {
-                    for u in &d.uuids {
-                        ui.label(RichText::new(u).font(f_mono(10.5)).color(theme.text_muted));
-                    }
+            // Force the card to span the whole column, otherwise the narrow
+            // monospace UUID strings would let it collapse into a thin box.
+            ui.set_min_width(full_w - 8.0);
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new("SERVICES")
+                        .font(f_sb(10.0))
+                        .color(theme.text_dim),
+                );
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.label(
+                        RichText::new(format!("{} UUIDs", d.uuids.len()))
+                            .font(f_reg(10.5))
+                            .color(theme.text_dim),
+                    );
                 });
+            });
+            ui.add_space(8.0);
+            for u in &d.uuids {
+                ui.label(
+                    RichText::new(u)
+                        .font(f_mono(10.5))
+                        .color(theme.text_muted),
+                );
+            }
         });
 }
 
@@ -2369,7 +2388,8 @@ fn settings(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
                     &mut cfg.close_to_tray,
                     &theme,
                 );
-                changed |= toggle_row(
+                let before_autostart = cfg.autostart;
+                let autostart_changed = toggle_row(
                     ui,
                     "🚀",
                     "Launch at login",
@@ -2377,6 +2397,7 @@ fn settings(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
                     &mut cfg.autostart,
                     &theme,
                 );
+                changed |= autostart_changed;
                 changed |= interval_row(
                     ui,
                     "⏱",
@@ -2388,6 +2409,12 @@ fn settings(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
                 if changed {
                     *state.config.lock().unwrap() = cfg.clone();
                     cfg.save();
+                    if autostart_changed && cfg.autostart != before_autostart {
+                        if let Err(e) = crate::autostart::set(cfg.autostart) {
+                            *state.last_error.lock().unwrap() =
+                                Some(format!("Autostart: {e}"));
+                        }
+                    }
                 }
             });
             ui.add_space(18.0);

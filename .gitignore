@@ -19,3 +19,6 @@ Thumbs.db
 
 # Screenshots dumped to /tmp during dev
 *.png.bak
+
+# HTML prototypes — kept locally as sketchbook, not shipped in the repo
+mockups/
