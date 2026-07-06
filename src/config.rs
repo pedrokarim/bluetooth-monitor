@@ -20,9 +20,15 @@ pub struct Config {
     pub autostart: bool,
 }
 
-fn default_refresh() -> u64 { 3 }
-fn default_true() -> bool { true }
-fn default_battery_threshold() -> u8 { 20 }
+fn default_refresh() -> u64 {
+    3
+}
+fn default_true() -> bool {
+    true
+}
+fn default_battery_threshold() -> u8 {
+    20
+}
 
 impl Default for Config {
     fn default() -> Self {
@@ -44,8 +50,12 @@ impl Config {
     }
 
     pub fn load() -> Self {
-        let Some(path) = Self::path() else { return Self::default() };
-        let Ok(bytes) = std::fs::read_to_string(&path) else { return Self::default() };
+        let Some(path) = Self::path() else {
+            return Self::default();
+        };
+        let Ok(bytes) = std::fs::read_to_string(&path) else {
+            return Self::default();
+        };
         toml::from_str(&bytes).unwrap_or_default()
     }
 

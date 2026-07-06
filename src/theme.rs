@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use eframe::egui;
 use egui::{Color32, Painter, Pos2, Rect, Rounding, Stroke, Style, Visuals};
 use serde::{Deserialize, Serialize};
@@ -231,7 +233,14 @@ impl Theme {
     }
 
     pub fn accent_for(&self, index: usize) -> Color32 {
-        let cycle = [self.teal, self.coral, self.yellow, self.purple, self.orange, self.pink];
+        let cycle = [
+            self.teal,
+            self.coral,
+            self.yellow,
+            self.purple,
+            self.orange,
+            self.pink,
+        ];
         cycle[index % cycle.len()]
     }
 
@@ -332,13 +341,18 @@ pub fn paint_background(painter: &Painter, rect: Rect, theme: &Theme) {
             painter.rect_filled(rect, Rounding::ZERO, theme.bg_top);
         }
         BgStyle::Gradient => {
-            let stops = [(0.0, theme.bg_top), (0.55, theme.bg_mid), (1.0, theme.bg_bot)];
+            let stops = [
+                (0.0, theme.bg_top),
+                (0.55, theme.bg_mid),
+                (1.0, theme.bg_bot),
+            ];
             for pair in stops.windows(2) {
                 let (t0, c0) = pair[0];
                 let (t1, c1) = pair[1];
                 let y0 = rect.min.y + rect.height() * t0;
                 let y1 = rect.min.y + rect.height() * t1;
-                let strip = Rect::from_min_max(Pos2::new(rect.min.x, y0), Pos2::new(rect.max.x, y1));
+                let strip =
+                    Rect::from_min_max(Pos2::new(rect.min.x, y0), Pos2::new(rect.max.x, y1));
                 gradient_rect(painter, strip, c0, c1);
             }
         }
@@ -350,11 +364,28 @@ fn gradient_rect(painter: &Painter, rect: Rect, top: Color32, bot: Color32) {
     let mut mesh = Mesh::default();
     let base = mesh.vertices.len() as u32;
     let uv = egui::pos2(0.0, 0.0);
-    mesh.vertices.push(Vertex { pos: rect.left_top(), uv, color: top });
-    mesh.vertices.push(Vertex { pos: rect.right_top(), uv, color: top });
-    mesh.vertices.push(Vertex { pos: rect.left_bottom(), uv, color: bot });
-    mesh.vertices.push(Vertex { pos: rect.right_bottom(), uv, color: bot });
-    mesh.indices.extend_from_slice(&[base, base + 1, base + 2, base + 1, base + 3, base + 2]);
+    mesh.vertices.push(Vertex {
+        pos: rect.left_top(),
+        uv,
+        color: top,
+    });
+    mesh.vertices.push(Vertex {
+        pos: rect.right_top(),
+        uv,
+        color: top,
+    });
+    mesh.vertices.push(Vertex {
+        pos: rect.left_bottom(),
+        uv,
+        color: bot,
+    });
+    mesh.vertices.push(Vertex {
+        pos: rect.right_bottom(),
+        uv,
+        color: bot,
+    });
+    mesh.indices
+        .extend_from_slice(&[base, base + 1, base + 2, base + 1, base + 3, base + 2]);
     painter.add(egui::Shape::Mesh(mesh));
 }
 
@@ -366,7 +397,11 @@ pub fn app_icon(size: u32) -> egui::IconData {
     let (w, h) = (size as usize, size as usize);
     let mut pixels = vec![0u8; w * h * 4];
     draw_bluetooth_glyph(&mut pixels, w, h);
-    egui::IconData { rgba: pixels, width: w as u32, height: h as u32 }
+    egui::IconData {
+        rgba: pixels,
+        width: w as u32,
+        height: h as u32,
+    }
 }
 
 pub fn tray_icon_argb(size: usize) -> Vec<u8> {
@@ -412,7 +447,9 @@ fn draw_bluetooth_glyph(pixels: &mut [u8], w: usize, h: usize) {
     for y in y_top..=y_bot {
         for dx in 0..stroke {
             let x = cx_i.saturating_sub(stroke / 2) + dx;
-            if x < w { paint_px(pixels, w, x, y); }
+            if x < w {
+                paint_px(pixels, w, x, y);
+            }
         }
     }
     line(pixels, w, h, cx_i, y_top, x_right, y_qh, stroke);
@@ -433,7 +470,16 @@ fn paint_px(pixels: &mut [u8], w: usize, x: usize, y: usize) {
     }
 }
 
-fn line(pixels: &mut [u8], w: usize, h: usize, x0: usize, y0: usize, x1: usize, y1: usize, stroke: usize) {
+fn line(
+    pixels: &mut [u8],
+    w: usize,
+    h: usize,
+    x0: usize,
+    y0: usize,
+    x1: usize,
+    y1: usize,
+    stroke: usize,
+) {
     let (mut x0, mut y0, x1, y1) = (x0 as i32, y0 as i32, x1 as i32, y1 as i32);
     let dx = (x1 - x0).abs();
     let dy = -(y1 - y0).abs();
@@ -451,10 +497,18 @@ fn line(pixels: &mut [u8], w: usize, h: usize, x0: usize, y0: usize, x1: usize, 
                 }
             }
         }
-        if x0 == x1 && y0 == y1 { break; }
+        if x0 == x1 && y0 == y1 {
+            break;
+        }
         let e2 = 2 * err;
-        if e2 >= dy { err += dy; x0 += sx; }
-        if e2 <= dx { err += dx; y0 += sy; }
+        if e2 >= dy {
+            err += dy;
+            x0 += sx;
+        }
+        if e2 <= dx {
+            err += dx;
+            y0 += sy;
+        }
     }
 }
 
