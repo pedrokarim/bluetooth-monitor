@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Radiant — Bluetooth Monitor Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f6efe4;
+  --paper-warm: #f0e6d5;
+  --card: #ffffff;
+  --card-soft: #faf5ea;
+  --ink: #191512;
+  --ink-2: #2f2822;
+  --muted: #6d6156;
+  --dim: #a0928a;
+  --line: rgba(25, 21, 18, 0.10);
+  --line-soft: rgba(25, 21, 18, 0.06);
+  --terracotta: #c25236;
+  --terracotta-soft: #f1cec3;
+  --sage: #6d8365;
+  --sage-soft: #d5dccf;
+  --gold: #c99a2f;
+  --gold-soft: #ecdfba;
+  --navy: #24445c;
+  --wine: #8b3e50;
+  --shadow: 0 1px 2px rgba(25, 21, 18, 0.04), 0 8px 32px rgba(25, 21, 18, 0.06);
+  --shadow-lg: 0 4px 8px rgba(25, 21, 18, 0.05), 0 24px 60px rgba(25, 21, 18, 0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  padding: 40px 32px;
+  background:
+    radial-gradient(1200px 900px at 15% 5%, #f9f3e6, transparent 60%),
+    radial-gradient(900px 700px at 90% 100%, #f0e0cf, transparent 60%),
+    var(--paper);
+  min-height: 100vh;
+}
+.board-title {
+  text-align: center;
+  margin-bottom: 32px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  font-weight: 500;
+}
+.board-title strong {
+  color: var(--terracotta);
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+  max-width: 2100px;
+  margin: 0 auto;
+}
+.screen {
+  height: 720px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--paper-warm);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+.screen-label {
+  position: absolute; top: -22px; left: 12px;
+  font-size: 9px; letter-spacing: 0.3em;
+  color: var(--dim); font-weight: 600;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 10px;
+}
+.chip {
+  width: 32px; height: 32px; border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  display: grid; place-items: center;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.chip:hover { background: var(--card-soft); }
+.chip svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.masthead {
+  flex: 1;
+}
+.masthead .kicker {
+  font-family: 'Inter', sans-serif;
+  font-size: 9px; letter-spacing: 0.32em;
+  color: var(--terracotta); font-weight: 600;
+  text-transform: uppercase;
+}
+.masthead h1 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400; font-size: 22px;
+  line-height: 1.05;
+  letter-spacing: -0.005em;
+  margin-top: 1px;
+}
+.masthead h1 em { font-style: italic; color: var(--terracotta); }
+.header-actions { display: flex; gap: 6px; }
+
+/* ── Section rule (editorial hairline with label) ────────── */
+.rule {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0;
+}
+.rule::before, .rule::after {
+  content: '';
+  flex: 1; height: 1px; background: var(--line);
+}
+.rule::after { flex: 0; width: 0; }
+.rule .txt {
+  font-size: 9.5px; letter-spacing: 0.24em;
+  color: var(--muted); font-weight: 600;
+  text-transform: uppercase;
+}
+.rule .txt em {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic; font-weight: 400;
+  font-size: 13px; letter-spacing: 0;
+  color: var(--terracotta);
+  text-transform: none;
+  margin: 0 4px;
+}
+.rule .count {
+  font-family: 'Instrument Serif', serif;
+  font-size: 14px; color: var(--ink);
+}
+
+/* ── Tabs (underline serif) ─────────────────────────────── */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.tab {
+  padding: 4px 10px 4px 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; letter-spacing: 0.06em;
+  color: var(--dim);
+  background: transparent; border: none;
+  font-weight: 500; cursor: pointer;
+  border-right: 1px solid var(--line);
+  margin-right: 6px;
+}
+.tab:last-child { border-right: none; margin-right: 0; }
+.tab.active {
+  color: var(--terracotta);
+  font-weight: 600;
+}
+.tab.active em {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  color: var(--terracotta);
+  font-weight: 400;
+  font-size: 14px;
+  margin-right: 2px;
+}
+
+/* ── Stat block (editorial) ─────────────────────────────── */
+.stat-row {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  padding: 4px 0;
+}
+.stat {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+}
+.stat .num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 40px; font-weight: 400; line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.stat .num em { font-style: italic; color: var(--terracotta); }
+.stat .num .u {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; color: var(--muted);
+  font-weight: 400;
+  margin-left: 2px;
+}
+.stat .num.sage em { color: var(--sage); }
+.stat .num.gold em { color: var(--gold); }
+.stat .num.navy em { color: var(--navy); }
+.stat .lbl {
+  font-family: 'Inter', sans-serif;
+  font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--muted); font-weight: 600;
+  margin-top: 6px;
+}
+.stat .caption { font-size: 10px; color: var(--dim); margin-top: 2px; font-style: italic; }
+
+/* ── Donut ──────────────────────────────────────────────── */
+.donut-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid var(--line-soft);
+  display: flex; flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.donut-holder {
+  position: relative;
+  display: grid; place-items: center;
+  margin: 4px 0 12px;
+}
+.donut { width: 190px; height: 190px; }
+.donut circle { fill: none; }
+.donut .track { stroke: rgba(25, 21, 18, 0.06); }
+.donut-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.donut-center .big {
+  font-family: 'Instrument Serif', serif;
+  font-size: 46px; font-weight: 400; line-height: 1;
+}
+.donut-center .big em { font-style: italic; color: var(--terracotta); }
+.donut-center .small { font-size: 9px; letter-spacing: 0.28em; color: var(--muted); margin-top: 6px; font-weight: 600; }
+
+.legend { display: flex; flex-direction: column; gap: 8px; }
+.legend-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 12px; line-height: 1;
+  padding-bottom: 6px;
+  border-bottom: 1px dotted var(--line);
+}
+.legend-row:last-child { border-bottom: none; }
+.legend-row .dot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; align-self: center; }
+.legend-row .name { flex: 1; color: var(--ink-2); font-weight: 400; }
+.legend-row .pct {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px; font-weight: 400; font-style: italic;
+  line-height: 1;
+}
+
+/* ── Device rows ────────────────────────────────────────── */
+.devices-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 12px 4px 4px;
+  border: 1px solid var(--line-soft);
+}
+.devices { display: flex; flex-direction: column; gap: 0; }
+.device {
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border-radius: 10px;
+  transition: background 0.12s;
+}
+.device:hover { background: var(--card-soft); }
+.device + .device { border-top: 1px dotted var(--line); }
+.device .dot { width: 10px; height: 10px; border-radius: 999px; }
+.device.disconnected .dot {
+  background: transparent;
+  border: 1.5px solid var(--dim);
+  width: 9px; height: 9px;
+}
+.device .info { min-width: 0; }
+.device .name {
+  font-size: 13.5px; font-weight: 500; color: var(--ink);
+  display: flex; align-items: center; gap: 8px;
+}
+.device .name .glyph { font-size: 14px; }
+.device.disconnected .name { color: var(--muted); font-weight: 400; }
+.device .meta {
+  margin-top: 2px;
+  font-size: 10px; color: var(--dim);
+  font-family: 'JetBrains Mono', monospace;
+  display: flex; gap: 8px; align-items: center;
+}
+.device .meta .flag {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic; font-size: 11.5px;
+}
+.device .meta .flag.trust { color: var(--terracotta); }
+.device .meta .flag.paired { color: var(--sage); }
+
+.device .right { display: flex; align-items: center; gap: 10px; }
+.device .pct {
+  font-family: 'Instrument Serif', serif;
+  font-size: 20px; font-weight: 400; line-height: 1;
+  min-width: 40px; text-align: right;
+}
+.device .pct.dim { color: var(--dim); font-style: italic; }
+.device .bar { width: 46px; height: 4px; background: rgba(25,21,18,0.06); border-radius: 999px; overflow: hidden; }
+.device .bar > div { height: 100%; border-radius: 999px; }
+.device.disconnected .bar { visibility: hidden; }
+
+.btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500; font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.15s;
+}
+.btn.primary { background: var(--terracotta); color: white; border-color: var(--terracotta); }
+.btn.primary:hover { background: #a3402a; }
+.btn.sage { background: var(--sage); color: white; border-color: var(--sage); }
+.btn.ghost { background: transparent; color: var(--ink-2); border-color: var(--line); }
+.btn.ghost:hover { background: var(--card-soft); border-color: var(--muted); }
+.btn.destructive { background: transparent; color: var(--wine); border-color: rgba(139, 62, 80, 0.3); }
+.btn.destructive:hover { background: rgba(139, 62, 80, 0.06); }
+
+/* ── Footer ─────────────────────────────────────────────── */
+.footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 10px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.footer .live::before {
+  content: '● '; color: var(--sage);
+}
+.footer .sep { color: var(--dim); }
+.footer .right { margin-left: auto; }
+.footer .right em {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic; font-size: 12px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+/* ── Splash ─────────────────────────────────────────────── */
+.splash-body {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1;
+  gap: 24px;
+  padding: 20px 0;
+}
+.splash-mark {
+  width: 132px; height: 132px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f5e2d0 0%, #eec7b1 100%);
+  border: 1px solid rgba(194, 82, 54, 0.2);
+  display: grid; place-items: center;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6), 0 12px 32px rgba(194, 82, 54, 0.14);
+}
+.splash-mark svg { width: 60px; height: 60px; color: var(--terracotta); }
+.splash-mark .frame {
+  position: absolute;
+  inset: -12px;
+  border: 1px dotted rgba(194, 82, 54, 0.4);
+  border-radius: 999px;
+}
+.splash-title {
+  text-align: center;
+}
+.splash-title .kicker {
+  font-size: 9px; letter-spacing: 0.36em;
+  color: var(--terracotta); font-weight: 600;
+}
+.splash-title h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 34px; font-weight: 400; line-height: 1.05;
+  letter-spacing: -0.01em; margin-top: 6px;
+}
+.splash-title h1 em { font-style: italic; color: var(--terracotta); }
+.splash-title .sub {
+  font-size: 11px; color: var(--muted); margin-top: 8px;
+  font-family: 'Instrument Serif', serif;
+  font-style: italic; font-weight: 400;
+}
+.splash-progress {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 10px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.1em;
+}
+.splash-progress .track {
+  width: 100px; height: 3px; border-radius: 999px;
+  background: rgba(25, 21, 18, 0.08); overflow: hidden;
+  position: relative;
+}
+.splash-progress .track::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: -30%;
+  width: 30%;
+  background: var(--terracotta);
+  border-radius: 999px;
+  animation: swipe 1.6s ease-in-out infinite;
+}
+@keyframes swipe {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+.splash-foot {
+  position: absolute; bottom: 22px; left: 0; right: 0;
+  text-align: center; font-size: 9.5px; color: var(--dim);
+  letter-spacing: 0.14em;
+}
+.splash-foot em {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic; font-size: 12px; letter-spacing: 0; color: var(--muted);
+}
+
+/* ── Device detail ──────────────────────────────────────── */
+.detail-hero {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid var(--line-soft);
+  display: flex; gap: 14px; align-items: center;
+}
+.detail-hero .avatar {
+  width: 56px; height: 56px; border-radius: 16px;
+  background: var(--terracotta-soft);
+  color: var(--terracotta);
+  display: grid; place-items: center;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.detail-hero h2 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400; font-size: 20px;
+  letter-spacing: -0.005em;
+}
+.detail-hero h2 em { font-style: italic; color: var(--terracotta); }
+.detail-hero .addr {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim); margin-top: 3px;
+}
+.detail-hero .badges { display: flex; gap: 6px; margin-top: 8px; }
+.pill {
+  padding: 2px 10px; border-radius: 999px;
+  font-size: 9.5px; letter-spacing: 0.06em;
+  border: 1px solid;
+  font-weight: 500;
+}
+.pill.on { color: var(--sage); border-color: var(--sage-soft); background: var(--sage-soft); }
+.pill.trust { color: var(--terracotta); border-color: var(--terracotta-soft); background: var(--terracotta-soft); }
+.pill.pair { color: var(--gold); border-color: var(--gold-soft); background: var(--gold-soft); }
+
+.metric-pair {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.metric-pair .cell {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-soft);
+}
+.metric-pair .cell .lbl {
+  font-size: 9px; letter-spacing: 0.24em; color: var(--muted); font-weight: 600; text-transform: uppercase;
+}
+.metric-pair .cell .val {
+  font-family: 'Instrument Serif', serif;
+  font-size: 32px; font-weight: 400; line-height: 1;
+  letter-spacing: -0.01em; margin-top: 4px;
+}
+.metric-pair .cell .val em { font-style: italic; }
+.metric-pair .cell.warm .val em { color: var(--gold); }
+.metric-pair .cell.cool .val em { color: var(--sage); }
+.metric-pair .cell .foot { font-size: 10px; color: var(--dim); margin-top: 4px; font-style: italic; }
+
+.chart-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-soft);
+}
+.chart-card .head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.chart-card h3 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 15px; font-weight: 400; font-style: italic;
+}
+.chart-card .tag { font-size: 10px; color: var(--sage); font-weight: 600; letter-spacing: 0.1em; }
+.chart-card .chart { height: 56px; }
+.chart-card svg { width: 100%; height: 100%; }
+
+.kv-list {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--line-soft);
+}
+.kv-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0;
+  font-size: 11px;
+}
+.kv-row + .kv-row { border-top: 1px dotted var(--line); }
+.kv-row .k { color: var(--muted); font-weight: 500; letter-spacing: 0.04em; }
+.kv-row .v { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink); }
+
+.action-strip { display: flex; gap: 8px; margin-top: auto; }
+.action-strip .btn { flex: 1; padding: 10px 8px; font-size: 11px; }
+
+/* ── Discover ───────────────────────────────────────────── */
+.scan-hero {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line-soft);
+  display: flex; gap: 14px; align-items: center;
+}
+.scan-hero .radar-mini {
+  width: 60px; height: 60px; border-radius: 999px;
+  background: radial-gradient(closest-side, var(--terracotta-soft), transparent 70%);
+  position: relative;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.scan-hero .radar-mini::before,
+.scan-hero .radar-mini::after {
+  content: '';
+  position: absolute; inset: 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--terracotta);
+  animation: radarPing 2s ease-out infinite;
+}
+.scan-hero .radar-mini::after { animation-delay: 1s; }
+@keyframes radarPing {
+  0% { transform: scale(0.4); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.scan-hero .radar-mini .core {
+  width: 10px; height: 10px; border-radius: 999px;
+  background: var(--terracotta);
+}
+.scan-hero .info h2 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px; font-weight: 400;
+}
+.scan-hero .info h2 em { font-style: italic; color: var(--terracotta); }
+.scan-hero .info .desc {
+  font-size: 11px; color: var(--muted); margin-top: 3px;
+  font-family: 'Instrument Serif', serif; font-style: italic;
+}
+.scan-hero .info .elapsed {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim); margin-top: 4px;
+}
+
+.found-list { display: flex; flex-direction: column; }
+.found {
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: 4px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--card);
+  border-radius: 12px;
+  margin-bottom: 6px;
+  border: 1px solid var(--line-soft);
+}
+.found .rssi-marker {
+  height: 32px; border-radius: 999px;
+  background: linear-gradient(180deg, var(--sage), transparent);
+}
+.found.weak .rssi-marker { background: linear-gradient(180deg, var(--gold), transparent); }
+.found.faint .rssi-marker { background: linear-gradient(180deg, var(--dim), transparent); }
+.found .info-2 .name { font-size: 12.5px; font-weight: 500; }
+.found .info-2 .meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; color: var(--dim); margin-top: 2px;
+}
+.found .rssi-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px; font-style: italic; font-weight: 400;
+  color: var(--sage);
+}
+.found.weak .rssi-num { color: var(--gold); }
+.found.faint .rssi-num { color: var(--dim); }
+.found .btn { padding: 5px 12px; font-size: 10.5px; }
+
+.tip-card {
+  margin-top: auto;
+  background: var(--terracotta-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(194, 82, 54, 0.15);
+  font-size: 11px; line-height: 1.55;
+  color: var(--ink-2);
+}
+.tip-card .head {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic; font-size: 13px;
+  color: var(--terracotta);
+  margin-bottom: 3px;
+}
+
+/* ── Settings ───────────────────────────────────────────── */
+.setting-group h3 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 14px; font-weight: 400; font-style: italic;
+  color: var(--terracotta);
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+.setting-list {
+  background: var(--card);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+}
+.setting-item {
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.setting-item + .setting-item { border-top: 1px dotted var(--line); }
+.setting-item .glyph {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--card-soft); color: var(--muted);
+  display: grid; place-items: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.setting-item .body { flex: 1; min-width: 0; }
+.setting-item .body .k { font-size: 12.5px; font-weight: 500; }
+.setting-item .body .d { font-size: 10.5px; color: var(--muted); margin-top: 1px; font-style: italic; font-family: 'Instrument Serif', serif; font-size: 12px; }
+.switch {
+  width: 34px; height: 20px; border-radius: 999px;
+  background: rgba(25, 21, 18, 0.1);
+  border: 1px solid var(--line);
+  cursor: pointer; position: relative;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.switch::after {
+  content: '';
+  position: absolute; top: 1px; left: 1px;
+  width: 16px; height: 16px; border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(25, 21, 18, 0.2);
+  transition: all 0.2s;
+}
+.switch.on { background: var(--terracotta); border-color: var(--terracotta); }
+.switch.on::after { left: 15px; }
+.setting-item select {
+  background: var(--card-soft);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  outline: none;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="board-title">DESIGN DIRECTION — <strong>Radiant</strong> — light editorial · warm paper · serif numerals · 5 screens</div>
+
+<div class="board">
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 0 — SPLASH                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">00 · SPLASH</div>
+
+    <div class="splash-body">
+      <div class="splash-mark">
+        <div class="frame"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6.5 6.5L17.5 17.5 12 22V2l5.5 5.5L6.5 17.5"/>
+        </svg>
+      </div>
+
+      <div class="splash-title">
+        <div class="kicker">EDITION · 01</div>
+        <h1>Bluetooth<br><em>Monitor</em></h1>
+        <div class="sub">A calm dashboard for your devices</div>
+      </div>
+
+      <div class="splash-progress">
+        <div class="track"></div>
+        <span>Preparing hci0</span>
+      </div>
+    </div>
+
+    <div class="splash-foot">
+      <em>v0.1.0</em> · No. 001 of the summer collection
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 1 — DASHBOARD                                              -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">01 · DASHBOARD</div>
+
+    <div class="header">
+      <button class="chip"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div class="masthead">
+        <div class="kicker">MONDAY · 4 DEVICES</div>
+        <h1>The <em>Bluetooth</em> Journal</h1>
+      </div>
+      <div class="header-actions">
+        <button class="chip"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/></svg></button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab"><em>All</em></button>
+      <button class="tab active"><em>Connected</em></button>
+      <button class="tab"><em>Paired</em></button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat">
+        <div class="num"><em>2</em><span class="u"> / 4</span></div>
+        <div class="lbl">CONNECTED</div>
+      </div>
+      <div class="stat">
+        <div class="num gold"><em>70</em><span class="u">%</span></div>
+        <div class="lbl">BATTERY · AVG</div>
+      </div>
+    </div>
+
+    <div class="rule"><span class="txt">— By battery <em>rings</em> —</span></div>
+
+    <div class="donut-card">
+      <div class="donut-holder">
+        <svg class="donut" viewBox="0 0 200 200">
+          <circle class="track" cx="100" cy="100" r="86" stroke-width="9"/>
+          <circle cx="100" cy="100" r="86" stroke-width="9" fill="none"
+                  stroke="#c25236" stroke-linecap="round"
+                  stroke-dasharray="432 540"
+                  transform="rotate(-90 100 100)"/>
+          <circle class="track" cx="100" cy="100" r="70" stroke-width="9"/>
+          <circle cx="100" cy="100" r="70" stroke-width="9" fill="none"
+                  stroke="#c99a2f" stroke-linecap="round"
+                  stroke-dasharray="264 440"
+                  transform="rotate(-90 100 100)"/>
+        </svg>
+        <div class="donut-center"><div class="big"><em>2</em></div><div class="small">CONNECTED</div></div>
+      </div>
+      <div class="legend">
+        <div class="legend-row"><div class="dot" style="background:#c25236"></div><div class="name">LOGI M240</div><div class="pct" style="color:#c25236">80%</div></div>
+        <div class="legend-row"><div class="dot" style="background:#c99a2f"></div><div class="name">Redmi Buds 4 Active</div><div class="pct" style="color:#c99a2f">60%</div></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="live">Live</span>
+      <span class="sep">—</span>
+      <span>Auto refresh <em style="font-family:'Instrument Serif',serif;font-style:italic;font-size:12px;">3s</em></span>
+      <span class="right"><em>vol.</em> 0.1.0</span>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 2 — DEVICE DETAIL                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">02 · DEVICE DETAIL</div>
+
+    <div class="header">
+      <button class="chip"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="masthead">
+        <div class="kicker">ARTICLE · A DEVICE</div>
+        <h1><em>Redmi</em> Buds 4</h1>
+      </div>
+      <div class="header-actions">
+        <button class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
+      </div>
+    </div>
+
+    <div class="detail-hero">
+      <div class="avatar">🎧</div>
+      <div>
+        <h2>Redmi Buds 4 <em>Active</em></h2>
+        <div class="addr">48:73:CB:08:EE:1B</div>
+        <div class="badges">
+          <span class="pill on">Connected</span>
+          <span class="pill pair">Paired</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="metric-pair">
+      <div class="cell warm">
+        <div class="lbl">BATTERY</div>
+        <div class="val"><em>60</em>%</div>
+        <div class="foot">±2% last hour</div>
+      </div>
+      <div class="cell cool">
+        <div class="lbl">SIGNAL</div>
+        <div class="val"><em>−42</em></div>
+        <div class="foot">dBm — excellent</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="head">
+        <h3>Signal, last <em>60s</em></h3>
+        <span class="tag">EXCELLENT</span>
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 300 60" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="radG" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#6d8365" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#6d8365" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0,38 L20,35 L40,30 L60,32 L80,24 L100,22 L120,27 L140,20 L160,24 L180,17 L200,20 L220,14 L240,17 L260,12 L280,16 L300,12 L300,60 L0,60 Z" fill="url(#radG)"/>
+          <path d="M0,38 L20,35 L40,30 L60,32 L80,24 L100,22 L120,27 L140,20 L160,24 L180,17 L200,20 L220,14 L240,17 L260,12 L280,16 L300,12" fill="none" stroke="#6d8365" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="kv-list">
+      <div class="kv-row"><span class="k">Type</span><span class="v">audio-headset</span></div>
+      <div class="kv-row"><span class="k">Vendor</span><span class="v">0x0157</span></div>
+      <div class="kv-row"><span class="k">Class</span><span class="v">0x240404</span></div>
+      <div class="kv-row"><span class="k">Tx power</span><span class="v">+4 dBm</span></div>
+    </div>
+
+    <div class="action-strip">
+      <button class="btn destructive">Disconnect</button>
+      <button class="btn ghost">Trust</button>
+      <button class="btn ghost">Remove</button>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 3 — DISCOVER                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">03 · DISCOVER</div>
+
+    <div class="header">
+      <button class="chip"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="masthead">
+        <div class="kicker">FEATURE · DISCOVER</div>
+        <h1><em>Nearby</em> devices</h1>
+      </div>
+      <div class="header-actions">
+        <button class="chip"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg></button>
+      </div>
+    </div>
+
+    <div class="scan-hero">
+      <div class="radar-mini">
+        <div class="core"></div>
+      </div>
+      <div class="info">
+        <h2>Listening <em>quietly</em></h2>
+        <div class="desc">Watching for advertising packets</div>
+        <div class="elapsed">Elapsed 00:14 · 3 found</div>
+      </div>
+    </div>
+
+    <div class="rule"><span class="txt">— Sorted <em>by strength</em> —</span></div>
+
+    <div class="found-list">
+      <div class="found">
+        <div class="rssi-marker"></div>
+        <div class="info-2">
+          <div class="name">Galaxy Buds Pro</div>
+          <div class="meta">C0:1A:F8:33:0D:5E</div>
+        </div>
+        <div class="rssi-num">−38</div>
+        <button class="btn primary">Pair</button>
+      </div>
+      <div class="found weak">
+        <div class="rssi-marker"></div>
+        <div class="info-2">
+          <div class="name">MX Keys S</div>
+          <div class="meta">DC:2C:26:71:1B:9A</div>
+        </div>
+        <div class="rssi-num">−62</div>
+        <button class="btn primary">Pair</button>
+      </div>
+      <div class="found faint">
+        <div class="rssi-marker"></div>
+        <div class="info-2">
+          <div class="name">Unknown BLE</div>
+          <div class="meta">7F:22:C4:8B:9D:0F</div>
+        </div>
+        <div class="rssi-num">−84</div>
+        <button class="btn ghost">Pair</button>
+      </div>
+    </div>
+
+    <div class="tip-card">
+      <div class="head">A quiet note</div>
+      Not seeing your device? Enter <strong>pairing mode</strong> on it first — usually a long press until the LED blinks.
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 4 — SETTINGS                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">04 · SETTINGS</div>
+
+    <div class="header">
+      <button class="chip"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="masthead">
+        <div class="kicker">COLOPHON</div>
+        <h1><em>Settings</em></h1>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>Adapter</h3>
+      <div class="setting-list">
+        <div class="setting-item">
+          <div class="glyph">📡</div>
+          <div class="body"><div class="k">Powered</div><div class="d">Bluetooth radio on</div></div>
+          <div class="switch on"></div>
+        </div>
+        <div class="setting-item">
+          <div class="glyph">🔍</div>
+          <div class="body"><div class="k">Discoverable</div><div class="d">Visible to nearby devices</div></div>
+          <div class="switch"></div>
+        </div>
+        <div class="setting-item">
+          <div class="glyph">🔗</div>
+          <div class="body"><div class="k">Pairable</div><div class="d">Accept pairing requests</div></div>
+          <div class="switch on"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>Preferences</h3>
+      <div class="setting-list">
+        <div class="setting-item">
+          <div class="glyph">⏱</div>
+          <div class="body"><div class="k">Auto-refresh</div><div class="d">Poll device state</div></div>
+          <select><option>1s</option><option selected>3s</option><option>5s</option><option>10s</option></select>
+        </div>
+        <div class="setting-item">
+          <div class="glyph">🔋</div>
+          <div class="body"><div class="k">Low battery alert</div><div class="d">Notify at 20%</div></div>
+          <div class="switch on"></div>
+        </div>
+        <div class="setting-item">
+          <div class="glyph">🖼</div>
+          <div class="body"><div class="k">Close to tray</div><div class="d">Keep running in background</div></div>
+          <div class="switch on"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>System</h3>
+      <div class="setting-list">
+        <div class="setting-item">
+          <div class="glyph">🚀</div>
+          <div class="body"><div class="k">Launch at login</div><div class="d">Start with system</div></div>
+          <div class="switch"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="live">Live</span>
+      <span class="sep">—</span>
+      <span>BlueZ 5.72</span>
+      <span class="right"><em>vol.</em> 0.1.0</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

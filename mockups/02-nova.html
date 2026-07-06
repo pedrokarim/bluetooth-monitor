@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Nova — Bluetooth Monitor Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg-2: #0f0f18;
+  --card: rgba(255, 255, 255, 0.02);
+  --card-hover: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text: #f5f5f7;
+  --text-muted: #a0a0b0;
+  --text-dim: #6b6b7e;
+  --accent: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.35);
+  --accent-2: #22d3ee;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --shadow-card: 0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 24px rgba(0,0,0,0.4);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv02", "cv03", "cv11";
+}
+body {
+  padding: 40px 32px;
+  background:
+    radial-gradient(1200px 800px at 50% -20%, rgba(99, 102, 241, 0.10), transparent 50%),
+    radial-gradient(800px 600px at 10% 100%, rgba(34, 211, 238, 0.06), transparent 50%),
+    var(--bg);
+  min-height: 100vh;
+}
+.board-title {
+  text-align: center;
+  margin-bottom: 32px;
+  color: var(--text-dim);
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  font-weight: 500;
+  font-family: 'Space Grotesk', sans-serif;
+}
+.board-title strong { color: var(--text); font-weight: 700; }
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 20px;
+  max-width: 2100px;
+  margin: 0 auto;
+}
+.screen {
+  height: 720px;
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, #12121a 0%, #0d0d14 100%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+.screen-label {
+  position: absolute; top: -22px; left: 16px;
+  font-size: 9px; letter-spacing: 0.3em;
+  color: var(--text-dim); font-weight: 600;
+  font-family: 'Space Grotesk', sans-serif;
+}
+/* subtle grid overlay */
+.screen::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  mask-image: radial-gradient(circle at 50% 30%, black 30%, transparent 70%);
+}
+.screen > * { position: relative; }
+
+/* ── Header ─────────────────────────────────────────────── */
+.header { display: flex; align-items: center; gap: 12px; }
+.brand {
+  display: flex; align-items: center; gap: 10px;
+}
+.brand-glyph {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), #4f46e5);
+  display: grid; place-items: center;
+  box-shadow: 0 4px 12px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+  color: white;
+}
+.brand-glyph svg { width: 18px; height: 18px; }
+.brand-txt h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px; letter-spacing: -0.01em; font-weight: 600;
+}
+.brand-txt .sub {
+  font-size: 10px; color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 1px;
+}
+.header-actions { margin-left: auto; display: flex; gap: 6px; }
+.icon-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--card); border: 1px solid var(--border);
+  display: grid; place-items: center;
+  color: var(--text-muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.icon-btn:hover { background: var(--card-hover); color: var(--text); border-color: var(--border-strong); }
+.icon-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn.primary {
+  background: var(--accent); color: white; border-color: transparent;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+/* ── Tabs (underline style) ──────────────────────────────── */
+.tabs {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s;
+}
+.tab.active { color: var(--text); }
+.tab.active::after {
+  content: '';
+  position: absolute; left: 8px; right: 8px; bottom: -1px;
+  height: 2px; background: var(--accent);
+  border-radius: 999px 999px 0 0;
+}
+.tab .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  color: var(--text-dim);
+  background: var(--card);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+/* ── Stat cards ─────────────────────────────────────────── */
+.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.stat-card .lbl {
+  font-size: 10px; color: var(--text-dim); font-weight: 500;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.stat-card .val {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 26px; font-weight: 600; line-height: 1;
+  letter-spacing: -0.02em;
+  display: flex; align-items: baseline; gap: 4px;
+}
+.stat-card .val .unit { font-size: 12px; color: var(--text-dim); font-weight: 400; }
+.stat-card .delta {
+  font-size: 9.5px; color: var(--success); margin-top: 6px;
+  display: flex; align-items: center; gap: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.stat-card .delta.warn { color: var(--warning); }
+.stat-card .delta.dim { color: var(--text-dim); }
+.stat-card .spark {
+  height: 22px; margin-top: 6px;
+}
+.stat-card .spark svg { width: 100%; height: 100%; }
+
+/* ── Section header ─────────────────────────────────────── */
+.section {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+.section h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+}
+.section h2 .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-dim);
+  background: var(--card); border: 1px solid var(--border);
+  padding: 1px 6px; border-radius: 4px;
+  font-weight: 500;
+}
+.section .search {
+  font-size: 10.5px; color: var(--text-dim);
+  padding: 4px 10px 4px 8px; border-radius: 6px;
+  background: var(--card); border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.section .search svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ── Device rows ────────────────────────────────────────── */
+.devices { display: flex; flex-direction: column; gap: 4px; overflow: auto; min-height: 0; }
+.device {
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 32px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition: background 0.12s, border-color 0.12s;
+}
+.device:hover { background: var(--card-hover); border-color: var(--border-strong); }
+.device .avatar {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(99,102,241,0.05));
+  border: 1px solid var(--border);
+  display: grid; place-items: center;
+  font-size: 15px;
+}
+.device.connected .avatar {
+  background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05));
+  border-color: rgba(16,185,129,0.3);
+}
+.device .name {
+  font-size: 12.5px; font-weight: 500;
+  display: flex; align-items: center; gap: 8px;
+}
+.device .name .status {
+  width: 6px; height: 6px; border-radius: 999px;
+  background: var(--success); box-shadow: 0 0 6px var(--success);
+}
+.device.disconnected .name .status { background: var(--text-dim); box-shadow: none; }
+.device.disconnected .name { color: var(--text-muted); }
+.device .meta {
+  margin-top: 2px;
+  font-size: 10px; color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+.device .metric {
+  text-align: right; font-family: 'JetBrains Mono', monospace;
+}
+.device .metric .n { font-size: 13px; font-weight: 600; color: var(--text); }
+.device .metric .u { font-size: 9.5px; color: var(--text-dim); margin-top: 2px; }
+.device .metric.dim .n { color: var(--text-dim); font-weight: 400; }
+.btn {
+  padding: 6px 12px; border-radius: 6px;
+  font-family: inherit; font-weight: 500; font-size: 11px;
+  cursor: pointer; border: 1px solid; transition: all 0.15s;
+}
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.primary:hover { background: #4f46e5; }
+.btn.danger { background: transparent; color: var(--danger); border-color: rgba(239,68,68,0.3); }
+.btn.danger:hover { background: rgba(239,68,68,0.1); }
+.btn.ghost { background: transparent; color: var(--text-muted); border-color: var(--border-strong); }
+.btn.ghost:hover { background: var(--card); color: var(--text); }
+.btn.icon { padding: 6px; }
+.btn.icon svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ── Splash screen ──────────────────────────────────────── */
+.splash-body {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; gap: 24px;
+}
+.splash-logo {
+  position: relative;
+  display: grid; place-items: center;
+}
+.splash-logo .glow {
+  position: absolute;
+  width: 200px; height: 200px; border-radius: 999px;
+  background: radial-gradient(closest-side, var(--accent-glow), transparent 70%);
+  filter: blur(24px);
+}
+.splash-logo .box {
+  position: relative;
+  width: 96px; height: 96px; border-radius: 22px;
+  background: linear-gradient(135deg, var(--accent), #4f46e5);
+  display: grid; place-items: center;
+  box-shadow: 0 10px 40px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.splash-logo .box svg { width: 48px; height: 48px; color: white; }
+.splash-title h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 26px; font-weight: 700; letter-spacing: -0.02em;
+  text-align: center;
+}
+.splash-title .sub {
+  text-align: center; font-size: 12px;
+  color: var(--text-muted); margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+}
+.progress-line {
+  width: 200px; height: 3px; border-radius: 999px;
+  background: var(--card); overflow: hidden;
+  position: relative;
+}
+.progress-line::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: 50%; border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: slide 1.6s ease-in-out infinite;
+}
+@keyframes slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.splash-status {
+  font-size: 10px; color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+}
+.splash-foot {
+  position: absolute; bottom: 20px; left: 0; right: 0;
+  text-align: center; font-size: 9.5px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Device detail ──────────────────────────────────────── */
+.detail-hero {
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex; gap: 12px; align-items: center;
+}
+.detail-hero .avatar-big {
+  width: 52px; height: 52px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.06));
+  border: 1px solid var(--border-strong);
+  display: grid; place-items: center;
+  font-size: 24px;
+}
+.detail-hero h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+}
+.detail-hero .addr {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-dim);
+  margin-top: 2px;
+}
+.detail-hero .badges { display: flex; gap: 4px; margin-top: 6px; }
+.pill {
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 500;
+  border: 1px solid; letter-spacing: 0.02em;
+}
+.pill.on { color: var(--success); border-color: rgba(16,185,129,0.35); background: rgba(16,185,129,0.08); }
+.pill.trust { color: #a78bfa; border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.08); }
+.pill.pair { color: var(--accent-2); border-color: rgba(34,211,238,0.35); background: rgba(34,211,238,0.08); }
+
+.metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.metric-cell {
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.metric-cell .lbl { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+.metric-cell .val {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px; font-weight: 600; line-height: 1; letter-spacing: -0.02em;
+}
+.metric-cell .val.good { color: var(--success); }
+.metric-cell .val.warn { color: var(--warning); }
+.metric-cell .val .u { font-size: 11px; font-weight: 400; color: var(--text-dim); margin-left: 2px; }
+
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.chart-card .head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.chart-card h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px; font-weight: 600;
+}
+.chart-card .tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; color: var(--success);
+}
+.chart-card .chart {
+  height: 60px;
+}
+.chart-card .chart svg { width: 100%; height: 100%; }
+
+.kv-list {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.kv-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0;
+  font-size: 11px;
+}
+.kv-row + .kv-row { border-top: 1px solid var(--border); }
+.kv-row .k { color: var(--text-dim); }
+.kv-row .v { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 10.5px; }
+
+.action-strip { display: flex; gap: 8px; }
+.action-strip .btn { flex: 1; padding: 10px; font-size: 11px; }
+
+/* ── Discover ───────────────────────────────────────────── */
+.scan-hero {
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex; align-items: center; gap: 16px;
+}
+.scan-hero .indicator {
+  width: 56px; height: 56px; border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(99,102,241,0.3), transparent);
+  display: grid; place-items: center;
+  position: relative;
+}
+.scan-hero .indicator::before,
+.scan-hero .indicator::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 999px; border: 1.5px solid var(--accent);
+  animation: pingRing 1.8s ease-out infinite;
+}
+.scan-hero .indicator::after { animation-delay: 0.9s; }
+@keyframes pingRing {
+  0% { transform: scale(0.4); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.scan-hero .indicator .core {
+  width: 12px; height: 12px; border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  position: relative;
+}
+.scan-hero .info { flex: 1; }
+.scan-hero h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px; font-weight: 600;
+}
+.scan-hero .desc {
+  font-size: 11px; color: var(--text-muted); margin-top: 3px;
+}
+.scan-hero .elapsed {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-dim);
+  margin-top: 6px;
+}
+
+.found-list { display: flex; flex-direction: column; gap: 6px; }
+.found {
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: 6px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+}
+.found .rssi-marker {
+  width: 6px; height: 32px; border-radius: 999px;
+  background: linear-gradient(180deg, var(--success), transparent);
+}
+.found.weak .rssi-marker { background: linear-gradient(180deg, var(--warning), transparent); }
+.found.faint .rssi-marker { background: linear-gradient(180deg, var(--text-dim), transparent); }
+.found .info-2 .name { font-size: 12px; font-weight: 500; }
+.found .info-2 .meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; color: var(--text-dim); margin-top: 2px;
+}
+.found .rssi-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px; color: var(--success); font-weight: 600;
+}
+.found.weak .rssi-num { color: var(--warning); }
+.found.faint .rssi-num { color: var(--text-dim); }
+
+/* ── Settings ───────────────────────────────────────────── */
+.setting-group { }
+.setting-group h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10.5px; color: var(--text-dim);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 6px; padding: 0 2px;
+  font-weight: 600;
+}
+.setting-list {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.setting-item {
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.setting-item + .setting-item { border-top: 1px solid var(--border); }
+.setting-item .glyph {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--card-hover);
+  display: grid; place-items: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.setting-item .body { flex: 1; min-width: 0; }
+.setting-item .body .k { font-size: 12px; font-weight: 500; }
+.setting-item .body .d { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+.switch {
+  width: 32px; height: 18px; border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+  cursor: pointer; position: relative;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.switch::after {
+  content: '';
+  position: absolute; top: 1px; left: 1px;
+  width: 14px; height: 14px; border-radius: 999px;
+  background: white;
+  transition: all 0.2s;
+}
+.switch.on { background: var(--accent); border-color: var(--accent); }
+.switch.on::after { left: 15px; }
+.setting-item select {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* ── Status ─────────────────────────────────────────────── */
+.footer {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 10px; color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+.footer .live { color: var(--success); display: flex; align-items: center; gap: 4px; }
+.footer .live::before {
+  content: ''; width: 5px; height: 5px; border-radius: 999px;
+  background: var(--success); box-shadow: 0 0 6px var(--success);
+}
+.footer .right { margin-left: auto; }
+</style>
+</head>
+<body>
+
+<div class="board-title">DESIGN DIRECTION — <strong>NOVA</strong> · charcoal + indigo · modern SaaS · 5 screens</div>
+
+<div class="board">
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 0 — SPLASH                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">00 · SPLASH</div>
+    <div class="splash-body">
+      <div class="splash-logo">
+        <div class="glow"></div>
+        <div class="box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 6.5L17.5 17.5 12 22V2l5.5 5.5L6.5 17.5"/>
+          </svg>
+        </div>
+      </div>
+      <div class="splash-title">
+        <h1>Bluetooth Monitor</h1>
+        <div class="sub">DEVICES · BATTERY · SIGNAL</div>
+      </div>
+      <div class="progress-line"></div>
+      <div class="splash-status">CONNECTING TO BLUEZ · hci0</div>
+    </div>
+    <div class="splash-foot">v0.1.0 — built with rust + egui</div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 1 — DASHBOARD                                              -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">01 · DASHBOARD</div>
+
+    <div class="header">
+      <div class="brand">
+        <div class="brand-glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 6.5L17.5 17.5 12 22V2l5.5 5.5L6.5 17.5"/>
+          </svg>
+        </div>
+        <div class="brand-txt">
+          <h1>Bluetooth</h1>
+          <div class="sub">hci0 · 5C:E9:1E</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/></svg></button>
+        <button class="icon-btn primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab">All <span class="count">4</span></button>
+      <button class="tab active">Connected <span class="count">2</span></button>
+      <button class="tab">Paired <span class="count">4</span></button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="lbl">Connected <span style="font-family:'JetBrains Mono',monospace">2/4</span></div>
+        <div class="val">2 <span class="unit">devices</span></div>
+        <div class="delta">↑ from 1 · 2m ago</div>
+      </div>
+      <div class="stat-card">
+        <div class="lbl">Battery avg</div>
+        <div class="val">70<span class="unit">%</span></div>
+        <div class="spark">
+          <svg viewBox="0 0 100 20" preserveAspectRatio="none">
+            <path d="M0,15 L15,12 L30,8 L45,10 L60,6 L75,4 L100,2" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Devices <span class="count">4</span></h2>
+      <div class="search">
+        <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Filter…
+      </div>
+    </div>
+
+    <div class="devices">
+      <div class="device connected">
+        <div class="avatar">🖱️</div>
+        <div>
+          <div class="name"><span class="status"></span>LOGI M240</div>
+          <div class="meta">D3:64:70:2F:88:0A · mouse</div>
+        </div>
+        <div class="metric"><div class="n">80%</div><div class="u">−48 dBm</div></div>
+        <button class="btn ghost">•••</button>
+      </div>
+      <div class="device connected">
+        <div class="avatar">🎧</div>
+        <div>
+          <div class="name"><span class="status"></span>Redmi Buds 4 Active</div>
+          <div class="meta">48:73:CB:08:EE:1B · audio</div>
+        </div>
+        <div class="metric"><div class="n">60%</div><div class="u">−42 dBm</div></div>
+        <button class="btn ghost">•••</button>
+      </div>
+      <div class="device disconnected">
+        <div class="avatar">🖨️</div>
+        <div>
+          <div class="name"><span class="status"></span>TM-m30III</div>
+          <div class="meta">DC:0D:30:74:FA:9F · printer</div>
+        </div>
+        <div class="metric dim"><div class="n">—</div><div class="u">offline</div></div>
+        <button class="btn primary">Connect</button>
+      </div>
+      <div class="device disconnected">
+        <div class="avatar">🎮</div>
+        <div>
+          <div class="name"><span class="status"></span>LIFT</div>
+          <div class="meta">DB:C0:16:48:BC:53 · hid</div>
+        </div>
+        <div class="metric dim"><div class="n">—</div><div class="u">offline</div></div>
+        <button class="btn primary">Connect</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="live">Live</span>
+      <span>·</span>
+      <span>Auto-refresh 3s</span>
+      <span class="right">v0.1.0</span>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 2 — DEVICE DETAIL                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">02 · DEVICE DETAIL</div>
+
+    <div class="header">
+      <button class="icon-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="brand-txt">
+        <h1>Device</h1>
+        <div class="sub">redmi-buds-4-active</div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
+      </div>
+    </div>
+
+    <div class="detail-hero">
+      <div class="avatar-big">🎧</div>
+      <div style="flex: 1; min-width: 0;">
+        <h1>Redmi Buds 4 Active</h1>
+        <div class="addr">48:73:CB:08:EE:1B</div>
+        <div class="badges">
+          <span class="pill on">● Connected</span>
+          <span class="pill pair">Paired</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-cell">
+        <div class="lbl">Battery</div>
+        <div class="val warn">60<span class="u">%</span></div>
+      </div>
+      <div class="metric-cell">
+        <div class="lbl">Signal</div>
+        <div class="val good">−42<span class="u">dBm</span></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="head">
+        <h3>Signal history — 60s</h3>
+        <span class="tag">EXCELLENT</span>
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 300 60" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="novaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0,38 L20,35 L40,30 L60,32 L80,24 L100,22 L120,27 L140,20 L160,24 L180,17 L200,20 L220,14 L240,17 L260,12 L280,16 L300,12 L300,60 L0,60 Z" fill="url(#novaGrad)"/>
+          <path d="M0,38 L20,35 L40,30 L60,32 L80,24 L100,22 L120,27 L140,20 L160,24 L180,17 L200,20 L220,14 L240,17 L260,12 L280,16 L300,12" fill="none" stroke="#10b981" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="kv-list">
+      <div class="kv-row"><span class="k">Type</span><span class="v">audio-headset</span></div>
+      <div class="kv-row"><span class="k">Vendor</span><span class="v">0x0157</span></div>
+      <div class="kv-row"><span class="k">Class</span><span class="v">0x240404</span></div>
+      <div class="kv-row"><span class="k">Tx power</span><span class="v">4 dBm</span></div>
+      <div class="kv-row"><span class="k">Services</span><span class="v">7 UUIDs</span></div>
+    </div>
+
+    <div class="action-strip">
+      <button class="btn danger">Disconnect</button>
+      <button class="btn ghost">Trust</button>
+      <button class="btn ghost">Remove</button>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 3 — DISCOVER                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">03 · DISCOVER</div>
+
+    <div class="header">
+      <button class="icon-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="brand-txt">
+        <h1>Discover</h1>
+        <div class="sub">scanning nearby</div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn primary"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg></button>
+      </div>
+    </div>
+
+    <div class="scan-hero">
+      <div class="indicator">
+        <div class="core"></div>
+      </div>
+      <div class="info">
+        <h2>Scanning nearby devices</h2>
+        <div class="desc">Watching for advertising packets on 2.4 GHz</div>
+        <div class="elapsed">Elapsed 00:14 · 3 found</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Nearby <span class="count">3</span></h2>
+      <div class="search">Sort · RSSI ↓</div>
+    </div>
+
+    <div class="found-list">
+      <div class="found">
+        <div class="rssi-marker"></div>
+        <div class="info-2">
+          <div class="name">Galaxy Buds Pro</div>
+          <div class="meta">C0:1A:F8:33:0D:5E</div>
+        </div>
+        <div class="rssi-num">−38</div>
+        <button class="btn primary">Pair</button>
+      </div>
+      <div class="found weak">
+        <div class="rssi-marker"></div>
+        <div class="info-2">
+          <div class="name">MX Keys S</div>
+          <div class="meta">DC:2C:26:71:1B:9A</div>
+        </div>
+        <div class="rssi-num">−62</div>
+        <button class="btn primary">Pair</button>
+      </div>
+      <div class="found faint">
+        <div class="rssi-marker"></div>
+        <div class="info-2">
+          <div class="name">Unknown BLE</div>
+          <div class="meta">7F:22:C4:8B:9D:0F</div>
+        </div>
+        <div class="rssi-num">−84</div>
+        <button class="btn ghost">Pair</button>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-top: auto;">
+      <div class="head">
+        <h3>Tip</h3>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5">
+        Not seeing your device? Put it in <strong style="color: var(--text)">pairing mode</strong> (usually a long press on the pair button until the LED blinks).
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCREEN 4 — SETTINGS                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">04 · SETTINGS</div>
+
+    <div class="header">
+      <button class="icon-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="brand-txt">
+        <h1>Settings</h1>
+        <div class="sub">preferences</div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>Adapter</h3>
+      <div class="setting-list">
+        <div class="setting-item">
+          <div class="glyph">📡</div>
+          <div class="body"><div class="k">Powered</div><div class="d">Bluetooth radio on</div></div>
+          <div class="switch on"></div>
+        </div>
+        <div class="setting-item">
+          <div class="glyph">🔍</div>
+          <div class="body"><div class="k">Discoverable</div><div class="d">Visible to nearby devices</div></div>
+          <div class="switch"></div>
+        </div>
+        <div class="setting-item">
+          <div class="glyph">🔗</div>
+          <div class="body"><div class="k">Pairable</div><div class="d">Accept pairing requests</div></div>
+          <div class="switch on"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>Preferences</h3>
+      <div class="setting-list">
+        <div class="setting-item">
+          <div class="glyph">⏱</div>
+          <div class="body"><div class="k">Auto-refresh</div><div class="d">Poll device state</div></div>
+          <select><option>1s</option><option selected>3s</option><option>5s</option><option>10s</option></select>
+        </div>
+        <div class="setting-item">
+          <div class="glyph">🔋</div>
+          <div class="body"><div class="k">Low battery alert</div><div class="d">Notify at 20%</div></div>
+          <div class="switch on"></div>
+        </div>
+        <div class="setting-item">
+          <div class="glyph">🖼</div>
+          <div class="body"><div class="k">Close to tray</div><div class="d">Keep running in background</div></div>
+          <div class="switch on"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>System</h3>
+      <div class="setting-list">
+        <div class="setting-item">
+          <div class="glyph">🚀</div>
+          <div class="body"><div class="k">Launch at login</div><div class="d">Start with system</div></div>
+          <div class="switch"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="live">Live</span>
+      <span>·</span>
+      <span>BlueZ 5.72</span>
+      <span class="right">v0.1.0</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

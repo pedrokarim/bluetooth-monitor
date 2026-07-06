@@ -1,0 +1,21 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# IDE
+/.vscode
+/.idea
+/.zed
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local runtime data (user config that shouldn't be committed)
+# The app reads/writes ~/.config/bt-monitor/config.toml on the user's system —
+# nothing local to this repo should mirror it.
+
+# Screenshots dumped to /tmp during dev
+*.png.bak
