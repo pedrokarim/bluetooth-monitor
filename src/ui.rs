@@ -1155,6 +1155,13 @@ fn device_row(
     }
     let mut open_detail = row_resp.clicked();
 
+    // Fixed widths for the right-hand columns so nothing can bleed into the
+    // name column when a name is long.
+    let chevron_w = 24.0;
+    let action_w = 96.0;
+    let battery_w = 62.0;
+    let gap = 10.0;
+    let total_right = chevron_w + gap + action_w + gap + battery_w + gap;
     let inner = ui.allocate_ui_with_layout(
         egui::vec2(ui.available_width(), 58.0),
         Layout::left_to_right(Align::Center),
@@ -1168,9 +1175,9 @@ fn device_row(
             }
             ui.add_space(10.0);
 
-            // Info block: natural height so the parent (Align::Center) can
-            // vertically center it against the metrics on the right.
-            let info_w = (ui.available_width() * 0.45).clamp(150.0, 230.0);
+            // Info block takes whatever space is left after the fixed-width right
+            // columns. Both lines truncate with "…" instead of overflowing.
+            let info_w = (ui.available_width() - total_right).max(120.0);
             ui.allocate_ui_with_layout(
                 egui::vec2(info_w, 0.0),
                 Layout::top_down(Align::Min),
@@ -1181,17 +1188,27 @@ fn device_row(
                     } else {
                         theme.text_muted
                     };
-                    ui.label(
-                        RichText::new(format!("{} {}", device_emoji(d.icon.as_deref()), &d.name))
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(format!(
+                                "{} {}",
+                                device_emoji(d.icon.as_deref()),
+                                &d.name
+                            ))
                             .font(f_med(13.5))
                             .color(name_color),
+                        )
+                        .truncate(),
                     );
                     ui.horizontal(|ui| {
                         ui.style_mut().spacing.item_spacing.x = 6.0;
-                        ui.label(
-                            RichText::new(&d.address)
-                                .font(f_mono(10.0))
-                                .color(theme.text_dim),
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(&d.address)
+                                    .font(f_mono(10.0))
+                                    .color(theme.text_dim),
+                            )
+                            .truncate(),
                         );
                         if d.trusted {
                             ui.label(
@@ -1207,51 +1224,73 @@ fn device_row(
                 },
             );
 
-            let mut chevron_clicked = false;
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                ui.style_mut().spacing.item_spacing.x = 8.0;
-                // Chevron — rightmost, always visible, explicit "open detail" affordance.
-                chevron_clicked = chevron_button(ui, chevron_tex, theme).clicked();
+            // Battery column: % on top, thin bar below — 2-line vertical stack
+            // so this cell is narrow (~62 px). Also right-aligned to its width.
+            ui.add_space(gap);
+            ui.allocate_ui_with_layout(
+                egui::vec2(battery_w, 0.0),
+                Layout::top_down(Align::Max),
+                |ui| {
+                    ui.style_mut().spacing.item_spacing.y = 4.0;
+                    match d.battery {
+                        Some(pct) => {
+                            let bcol = theme.battery_color(pct);
+                            ui.label(
+                                RichText::new(format!("{pct}%"))
+                                    .font(f_sb(13.0))
+                                    .color(bcol),
+                            );
+                            battery_pill_sized(ui, pct, bcol, theme, battery_w);
+                        }
+                        None => {
+                            ui.label(RichText::new("—").font(f_light(15.0)).color(theme.text_dim));
+                        }
+                    }
+                },
+            );
 
-                let (label, color, cmd) = if d.connected {
-                    (
-                        "Disconnect",
-                        theme.coral,
-                        Some(BluetoothCommand::Disconnect(d.address.clone())),
-                    )
-                } else if d.paired {
-                    (
-                        "Connect",
-                        theme.teal,
-                        Some(BluetoothCommand::Connect(d.address.clone())),
-                    )
-                } else {
-                    ("Not paired", theme.text_dim, None)
-                };
-                if let Some(cmd) = cmd {
-                    if pill_button(ui, label, color, theme).clicked() {
-                        let _ = state.cmd_tx.send(cmd);
+            // Action button column
+            ui.add_space(gap);
+            ui.allocate_ui_with_layout(
+                egui::vec2(action_w, 0.0),
+                Layout::top_down(Align::Center),
+                |ui| {
+                    let (label, color, cmd) = if d.connected {
+                        (
+                            "Disconnect",
+                            theme.coral,
+                            Some(BluetoothCommand::Disconnect(d.address.clone())),
+                        )
+                    } else if d.paired {
+                        (
+                            "Connect",
+                            theme.teal,
+                            Some(BluetoothCommand::Connect(d.address.clone())),
+                        )
+                    } else {
+                        ("Not paired", theme.text_dim, None)
+                    };
+                    if let Some(cmd) = cmd {
+                        let btn = egui::Button::new(
+                            RichText::new(label)
+                                .font(f_sb(11.5))
+                                .color(theme.on_accent()),
+                        )
+                        .fill(color)
+                        .rounding(Rounding::same(theme.pill_radius))
+                        .stroke(Stroke::NONE);
+                        if ui.add_sized([action_w, 30.0], btn).clicked() {
+                            let _ = state.cmd_tx.send(cmd);
+                        }
+                    } else {
+                        ui.label(RichText::new(label).font(f_reg(11.0)).color(theme.text_dim));
                     }
-                } else {
-                    ui.label(RichText::new(label).font(f_reg(11.0)).color(theme.text_dim));
-                }
+                },
+            );
 
-                match d.battery {
-                    Some(pct) => {
-                        let bcol = theme.battery_color(pct);
-                        ui.label(
-                            RichText::new(format!("{pct}%"))
-                                .font(f_sb(13.0))
-                                .color(bcol),
-                        );
-                        battery_pill(ui, pct, bcol, theme);
-                    }
-                    None => {
-                        ui.label(RichText::new("—").font(f_light(15.0)).color(theme.text_dim));
-                    }
-                }
-            });
-            if chevron_clicked {
+            // Chevron column
+            ui.add_space(gap);
+            if chevron_button(ui, chevron_tex, theme).clicked() {
                 open_detail = true;
             }
         },
@@ -1341,7 +1380,10 @@ fn pill_button(ui: &mut Ui, label: &str, color: Color32, theme: &Theme) -> egui:
 }
 
 fn battery_pill(ui: &mut Ui, pct: u8, color: Color32, theme: &Theme) {
-    let width = 50.0f32;
+    battery_pill_sized(ui, pct, color, theme, 50.0);
+}
+
+fn battery_pill_sized(ui: &mut Ui, pct: u8, color: Color32, theme: &Theme, width: f32) {
     let height = 5.0f32;
     let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), Sense::hover());
     let painter = ui.painter();
