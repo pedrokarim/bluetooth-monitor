@@ -5,6 +5,8 @@ mod fonts;
 mod theme;
 mod tray;
 mod ui;
+mod vendors;
+mod xiaomi_mma;
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -34,6 +36,8 @@ pub struct AppState {
     pub last_refresh: Arc<Mutex<Option<std::time::Instant>>>,
     /// Sliding window of the last RSSI samples per device address.
     pub rssi_history: Arc<Mutex<HashMap<String, VecDeque<i16>>>>,
+    /// Rolling debug log for MMA probes, keyed by device address.
+    pub mma_log: Arc<Mutex<HashMap<String, String>>>,
 }
 
 fn main() -> eframe::Result<()> {
@@ -65,6 +69,7 @@ fn main() -> eframe::Result<()> {
         scan_started: Arc::new(Mutex::new(None)),
         last_refresh: Arc::new(Mutex::new(None)),
         rssi_history: Arc::new(Mutex::new(HashMap::new())),
+        mma_log: Arc::new(Mutex::new(HashMap::new())),
     };
 
     let backend_state = state.clone();

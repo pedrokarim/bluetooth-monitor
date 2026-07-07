@@ -22,6 +22,9 @@ pub struct DeviceInfo {
     pub uuids: Vec<String>,
     pub manufacturer: Option<String>,
     pub class_of_device: Option<u32>,
+    /// Per-vendor decode of the raw manufacturer_data payload — for TWS
+    /// earbuds this recovers L / R / case battery, charging flags, etc.
+    pub components: Option<crate::vendors::Components>,
 }
 
 #[derive(Debug)]
@@ -35,6 +38,9 @@ pub enum BluetoothCommand {
     StartDiscovery,
     StopDiscovery,
     Pair(String),
+    /// Open an RFCOMM socket to a Xiaomi/Redmi TWS earbud and probe the
+    /// MMA protocol. Hex-dumps whatever comes back into `state.mma_log`.
+    ProbeMma(String),
 }
 
 #[derive(Clone, Debug)]
@@ -111,6 +117,14 @@ pub async fn run(state: AppState, mut cmd_rx: mpsc::UnboundedReceiver<BluetoothC
                         }
                         state.scanning.store(false, Ordering::Relaxed);
                         state.nearby.lock().unwrap().clear();
+                    }
+                    BluetoothCommand::ProbeMma(addr_str) => {
+                        // Fire-and-forget: keep the refresh loop responsive
+                        // while the probe writes/reads in a separate task.
+                        let state_clone = state.clone();
+                        tokio::spawn(async move {
+                            run_mma_probe(state_clone, addr_str).await;
+                        });
                     }
                     other => {
                         if let Err(e) = handle_command(&adapter, other).await {
@@ -243,13 +257,16 @@ async fn collect_devices(adapter: &Adapter) -> Result<Vec<DeviceInfo>> {
             .flatten()
             .map(|s| s.into_iter().map(|u| u.to_string()).collect::<Vec<_>>())
             .unwrap_or_default();
-        let manufacturer = d
-            .manufacturer_data()
-            .await
-            .ok()
-            .flatten()
+        // Keep the raw manufacturer_data map around so we can both format
+        // the vendor id for display AND try a per-vendor components decode.
+        let manufacturer_map = d.manufacturer_data().await.ok().flatten();
+        let manufacturer = manufacturer_map
+            .as_ref()
             .and_then(|m| m.keys().copied().next())
             .map(|id| format!("0x{id:04X}"));
+        let components = manufacturer_map
+            .as_ref()
+            .and_then(|m| crate::vendors::decode_map(m, &name));
         let class_of_device = d.class().await.ok().flatten();
 
         result.push(DeviceInfo {
@@ -266,6 +283,7 @@ async fn collect_devices(adapter: &Adapter) -> Result<Vec<DeviceInfo>> {
             uuids,
             manufacturer,
             class_of_device,
+            components,
         });
     }
     result.sort_by(|a, b| {
@@ -304,7 +322,86 @@ async fn handle_command(adapter: &Adapter, cmd: BluetoothCommand) -> Result<()> 
             let addr: Address = addr.parse()?;
             adapter.device(addr)?.pair().await?;
         }
-        BluetoothCommand::StartDiscovery | BluetoothCommand::StopDiscovery => {}
+        BluetoothCommand::StartDiscovery
+        | BluetoothCommand::StopDiscovery
+        | BluetoothCommand::ProbeMma(_) => {}
     }
     Ok(())
+}
+
+async fn run_mma_probe(state: AppState, addr_str: String) {
+    use crate::xiaomi_mma;
+
+    // Show something immediately so the user knows the click was received.
+    state
+        .mma_log
+        .lock()
+        .unwrap()
+        .insert(addr_str.clone(), "starting probe…\n".into());
+    if let Some(ctx) = state.ctx.lock().unwrap().as_ref() {
+        ctx.request_repaint();
+    }
+
+    let addr: bluer::Address = match addr_str.parse() {
+        Ok(a) => a,
+        Err(e) => {
+            state
+                .mma_log
+                .lock()
+                .unwrap()
+                .insert(addr_str, format!("bad address: {e}\n"));
+            if let Some(ctx) = state.ctx.lock().unwrap().as_ref() {
+                ctx.request_repaint();
+            }
+            return;
+        }
+    };
+
+    let frame = xiaomi_mma::default_probe();
+    match xiaomi_mma::probe(addr, frame, std::time::Duration::from_millis(1500)).await {
+        Ok(result) => {
+            // Concatenate everything the earbud sent so parse_frames can pick
+            // up back-to-back messages in one pass.
+            let mut buf = Vec::new();
+            for (_, chunk) in &result.received {
+                buf.extend_from_slice(chunk);
+            }
+            let frames = xiaomi_mma::parse_frames(&buf);
+
+            // Push a formatted trace to the debug panel...
+            let mut msg = xiaomi_mma::format_probe(&result);
+            if !frames.is_empty() {
+                msg.push_str("\nparsed frames:\n");
+                for f in &frames {
+                    msg.push_str(&format!(
+                        "  · type 0x{:02X}  len {}  payload {}\n",
+                        f.kind,
+                        f.payload.len(),
+                        hex::encode(&f.payload),
+                    ));
+                }
+            }
+            state.mma_log.lock().unwrap().insert(addr_str.clone(), msg);
+
+            // ...and, when the buds actually gave us a battery frame, push
+            // the parsed components onto the DeviceInfo so the COMPONENTS
+            // card immediately picks it up.
+            if let Some(components) = xiaomi_mma::components_from_frames(&frames) {
+                let mut devs = state.devices.lock().unwrap();
+                if let Some(d) = devs.iter_mut().find(|d| d.address == addr_str) {
+                    d.components = Some(components);
+                }
+            }
+        }
+        Err(e) => {
+            state
+                .mma_log
+                .lock()
+                .unwrap()
+                .insert(addr_str, format!("probe failed: {e:#}"));
+        }
+    }
+    if let Some(ctx) = state.ctx.lock().unwrap().as_ref() {
+        ctx.request_repaint();
+    }
 }

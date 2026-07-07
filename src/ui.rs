@@ -230,12 +230,27 @@ pub fn render_splash(ctx: &egui::Context, ui_state: &UiState, elapsed: f32) {
 pub fn render(ctx: &egui::Context, state: &AppState, ui_state: &mut UiState) {
     let theme = ui_state.theme;
 
-    // Paint the gradient inside the CentralPanel below everything.
+    // Paint the gradient across the *whole* screen buffer up front so no
+    // pixel row can ever end up transparent (the alpha-blended status bar
+    // fill was letting the wallpaper show through the last few pixels).
     egui::CentralPanel::default()
         .frame(egui::Frame::none())
         .show(ctx, |ui| {
-            let rect = ui.max_rect();
-            theme::paint_background(ui.painter(), rect, &theme);
+            let screen = ctx.screen_rect();
+            theme::paint_background(ui.painter(), screen, &theme);
+
+            // Pre-paint the whole bottom strip with the same solid fill we
+            // give to the status bar, so any gap between the widget layout
+            // and the real window edge (right-side scroll gutter or a few
+            // px at the very bottom) stays opaque instead of showing the
+            // gradient underneath.
+            const STATUS_STRIP_H: f32 = 40.0;
+            let bar_fill = darken(theme.bg_bot, 0.55);
+            let strip = Rect::from_min_max(
+                Pos2::new(screen.min.x, screen.max.y - STATUS_STRIP_H),
+                screen.max,
+            );
+            ui.painter().rect_filled(strip, Rounding::ZERO, bar_fill);
 
             // Header row
             egui::Frame::none()
@@ -246,14 +261,19 @@ pub fn render(ctx: &egui::Context, state: &AppState, ui_state: &mut UiState) {
 
             ui.add_space(4.0);
 
-            // Body content (fills between header and status)
-            let status_h = 40.0;
-            let body_h = (ui.available_height() - status_h).max(300.0);
+            // The status bar has its own inner_margin (24,10) plus a full row
+            // of ~14px text — reserve enough vertical space for the frame's
+            // outer height so the body doesn't push it below the viewport.
+            const STATUS_OUTER_H: f32 = 40.0;
+            let body_inner_h = (ui.available_height() - STATUS_OUTER_H).max(300.0);
+
             egui::Frame::none()
-                .inner_margin(Margin::symmetric(28.0, 4.0))
+                .inner_margin(Margin::symmetric(28.0, 0.0))
                 .show(ui, |ui| {
-                    ui.set_min_height(body_h);
-                    ui.set_max_height(body_h);
+                    // set both min and max so children lay out against a
+                    // deterministic viewport height
+                    ui.set_min_height(body_inner_h);
+                    ui.set_max_height(body_inner_h);
                     match ui_state.tab {
                         Tab::Dashboard => dashboard(ui, state, ui_state),
                         Tab::Discover => discover(ui, state, ui_state),
@@ -262,14 +282,27 @@ pub fn render(ctx: &egui::Context, state: &AppState, ui_state: &mut UiState) {
                     }
                 });
 
-            // Status bar at bottom
+            // Status bar at bottom — opaque solid fill mixed from the theme's
+            // background, so it can't turn transparent regardless of the
+            // renderer's alpha handling.
+            let bar_fill = darken(theme.bg_bot, 0.55);
             egui::Frame::none()
-                .fill(Color32::from_rgba_unmultiplied(0, 0, 0, 40))
-                .inner_margin(Margin::symmetric(24.0, 10.0))
+                .fill(bar_fill)
+                .inner_margin(Margin::symmetric(24.0, 8.0))
                 .show(ui, |ui| {
+                    ui.set_min_width(ui.available_width());
+                    ui.set_min_height(20.0);
                     status_bar(ui, state, &theme);
                 });
         });
+}
+
+fn darken(c: Color32, factor: f32) -> Color32 {
+    Color32::from_rgb(
+        (c.r() as f32 * factor).min(255.0) as u8,
+        (c.g() as f32 * factor).min(255.0) as u8,
+        (c.b() as f32 * factor).min(255.0) as u8,
+    )
 }
 
 fn status_bar(ui: &mut Ui, state: &AppState, theme: &Theme) {
@@ -1940,6 +1973,10 @@ fn detail(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
         .show(ui, |ui| {
             detail_hero(ui, &device, &theme);
             ui.add_space(14.0);
+            if let Some(components) = device.components.as_ref() {
+                detail_components(ui, components, &theme);
+                ui.add_space(14.0);
+            }
             detail_metrics(ui, &device, &theme);
             ui.add_space(14.0);
             detail_signal_chart(ui, &device, &theme, state);
@@ -1948,10 +1985,73 @@ fn detail(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
             ui.add_space(14.0);
             detail_actions(ui, &device, &theme, state);
 
+            // MMA / Xiaomi SPP probe panel — only surfaced when the device
+            // advertises the Xiaomi SPP UUID, so it stays hidden for
+            // AirPods / Sony / etc.
+            if device
+                .uuids
+                .iter()
+                .any(|u| u.eq_ignore_ascii_case(crate::xiaomi_mma::XIAOMI_SPP_UUID))
+            {
+                ui.add_space(14.0);
+                detail_mma_probe(ui, &device, &theme, state);
+            }
+
             if !device.uuids.is_empty() {
                 ui.add_space(14.0);
                 detail_services(ui, &device, &theme);
             }
+        });
+}
+
+fn detail_mma_probe(ui: &mut Ui, d: &DeviceInfo, theme: &Theme, state: &AppState) {
+    egui::Frame::none()
+        .fill(theme.card)
+        .stroke(Stroke::new(1.0, theme.card_outline))
+        .rounding(Rounding::same(theme.card_radius.min(16.0)))
+        .inner_margin(Margin::symmetric(20.0, 14.0))
+        .show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new("MMA PROBE · XIAOMI SPP")
+                        .font(f_sb(10.0))
+                        .color(theme.text_dim),
+                );
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    let btn = egui::Button::new(
+                        RichText::new("Probe now")
+                            .font(f_sb(11.0))
+                            .color(theme.on_accent()),
+                    )
+                    .fill(theme.teal)
+                    .rounding(Rounding::same(theme.pill_radius))
+                    .stroke(Stroke::NONE);
+                    if ui.add(btn).clicked() {
+                        let _ = state
+                            .cmd_tx
+                            .send(BluetoothCommand::ProbeMma(d.address.clone()));
+                    }
+                });
+            });
+            ui.add_space(8.0);
+            let log = state
+                .mma_log
+                .lock()
+                .unwrap()
+                .get(&d.address)
+                .cloned()
+                .unwrap_or_else(|| {
+                    "Click 'Probe now' to open an RFCOMM socket, send a \
+                     candidate MMA frame, and hex-dump whatever the earbud \
+                     writes back. Use this to iterate on opcodes."
+                        .into()
+                });
+            ui.label(
+                RichText::new(log)
+                    .font(f_mono(10.5))
+                    .color(theme.text_muted),
+            );
         });
 }
 
@@ -1962,14 +2062,13 @@ fn detail_signal_chart(ui: &mut Ui, d: &DeviceInfo, theme: &Theme, state: &AppSt
         hist.get(&d.address).map(|q| q.iter().copied().collect()).unwrap_or_default()
     };
 
-    let full_w = ui.available_width();
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
         .rounding(Rounding::same(theme.card_radius.min(16.0)))
         .inner_margin(Margin::symmetric(20.0, 14.0))
         .show(ui, |ui| {
-            ui.set_min_width(full_w - 8.0);
+            ui.set_min_width(ui.available_width());
             ui.horizontal(|ui| {
                 ui.label(RichText::new("SIGNAL — LAST 60 SAMPLES").font(f_sb(10.0)).color(theme.text_dim));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -2063,14 +2162,13 @@ fn paint_sparkline(ui: &Ui, rect: Rect, samples: &[i16], theme: &Theme) {
 }
 
 fn detail_hero(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
-    let full_w = ui.available_width();
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
         .rounding(Rounding::same(theme.card_radius.min(20.0)))
         .inner_margin(Margin::symmetric(22.0, 18.0))
         .show(ui, |ui| {
-            ui.set_min_width(full_w - 8.0);
+            ui.set_min_width(ui.available_width());
             ui.horizontal(|ui| {
                 // Avatar tile
                 let (avatar, _) = ui.allocate_exact_size(egui::vec2(56.0, 56.0), Sense::hover());
@@ -2143,6 +2241,154 @@ fn pill_status(ui: &mut Ui, text: &str, color: Color32) {
     ui.add_space(4.0);
 }
 
+/// Renders the "COMPONENTS" card for TWS earbuds: three columns — L bud,
+/// case, R bud — each with a big battery %, a colored bar, and a charging
+/// indicator when known.
+fn detail_components(ui: &mut Ui, c: &crate::vendors::Components, theme: &Theme) {
+    egui::Frame::none()
+        .fill(theme.card)
+        .stroke(Stroke::new(1.0, theme.card_outline))
+        .rounding(Rounding::same(theme.card_radius.min(16.0)))
+        .inner_margin(Margin::symmetric(20.0, 16.0))
+        .show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new("COMPONENTS")
+                        .font(f_sb(10.0))
+                        .color(theme.text_dim),
+                );
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.label(
+                        RichText::new(c.source)
+                            .font(f_mono(10.5))
+                            .color(theme.text_muted),
+                    );
+                });
+            });
+            ui.add_space(12.0);
+
+            ui.columns(3, |cols| {
+                component_cell(&mut cols[0], "LEFT BUD", "🎧", c.left_battery, c.left_charging, theme);
+                component_cell(&mut cols[1], "CASE", "🔋", c.case_battery, c.case_charging, theme);
+                component_cell(&mut cols[2], "RIGHT BUD", "🎧", c.right_battery, c.right_charging, theme);
+            });
+
+            // Small footer with in-ear / lid states when known
+            let mut chips: Vec<(String, Color32)> = Vec::new();
+            if let Some(l) = c.in_ear_left {
+                chips.push((
+                    format!("L · {}", if l { "in ear" } else { "out" }),
+                    if l { theme.teal } else { theme.text_dim },
+                ));
+            }
+            if let Some(r) = c.in_ear_right {
+                chips.push((
+                    format!("R · {}", if r { "in ear" } else { "out" }),
+                    if r { theme.teal } else { theme.text_dim },
+                ));
+            }
+            if let Some(open) = c.case_open {
+                chips.push((
+                    format!("case {}", if open { "open" } else { "closed" }),
+                    if open { theme.yellow } else { theme.text_dim },
+                ));
+            }
+            if !chips.is_empty() {
+                ui.add_space(10.0);
+                ui.horizontal_wrapped(|ui| {
+                    for (text, color) in chips {
+                        component_chip(ui, &text, color, theme);
+                    }
+                });
+            }
+        });
+}
+
+fn component_cell(
+    ui: &mut Ui,
+    label: &str,
+    emoji: &str,
+    battery: Option<u8>,
+    charging: Option<bool>,
+    theme: &Theme,
+) {
+    ui.vertical_centered(|ui| {
+        ui.label(
+            RichText::new(label)
+                .font(f_sb(9.5))
+                .color(theme.text_dim),
+        );
+        ui.add_space(6.0);
+        ui.label(RichText::new(emoji).size(22.0));
+        ui.add_space(4.0);
+        match battery {
+            Some(pct) => {
+                let color = theme.battery_color(pct);
+                ui.label(
+                    RichText::new(format!("{pct}%"))
+                        .font(hero_font(theme, 24.0))
+                        .color(color),
+                );
+                ui.add_space(6.0);
+                // Small horizontal bar
+                let width = 90.0f32;
+                let height = 5.0f32;
+                let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), Sense::hover());
+                let painter = ui.painter();
+                painter.rect_filled(rect, Rounding::same(999.0), theme.pill_track);
+                let fill_w = width * (pct as f32 / 100.0).clamp(0.0, 1.0);
+                painter.rect_filled(
+                    Rect::from_min_size(rect.min, egui::vec2(fill_w, height)),
+                    Rounding::same(999.0),
+                    color,
+                );
+                if let Some(true) = charging {
+                    ui.add_space(4.0);
+                    ui.label(
+                        RichText::new("⚡ charging")
+                            .font(f_sb(9.5))
+                            .color(theme.yellow),
+                    );
+                }
+            }
+            None => {
+                ui.label(
+                    RichText::new("—")
+                        .font(hero_font(theme, 24.0))
+                        .color(theme.text_dim),
+                );
+                ui.add_space(6.0);
+                ui.label(
+                    RichText::new("not reporting")
+                        .font(f_reg(9.5))
+                        .color(theme.text_dim),
+                );
+            }
+        }
+    });
+}
+
+fn component_chip(ui: &mut Ui, text: &str, color: Color32, theme: &Theme) {
+    let font = f_sb(9.5);
+    let galley = ui.fonts(|f| f.layout_no_wrap(text.to_string(), font.clone(), color));
+    let padding = egui::vec2(9.0, 3.0);
+    let (rect, _) = ui.allocate_exact_size(galley.size() + padding * 2.0, Sense::hover());
+    let painter = ui.painter();
+    painter.rect_filled(
+        rect,
+        Rounding::same(theme.pill_radius),
+        Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 22),
+    );
+    painter.rect_stroke(
+        rect,
+        Rounding::same(theme.pill_radius),
+        Stroke::new(1.0, Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 90)),
+    );
+    painter.text(rect.center(), Align2::CENTER_CENTER, text, font, color);
+    ui.add_space(4.0);
+}
+
 fn detail_metrics(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
     ui.columns(2, |cols| {
         cols[0].vertical(|ui| {
@@ -2191,14 +2437,13 @@ fn metric_cell(ui: &mut Ui, theme: &Theme, label: &str, value: String, unit: &st
 }
 
 fn detail_info(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
-    let full_w = ui.available_width();
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
         .rounding(Rounding::same(theme.card_radius.min(16.0)))
         .inner_margin(Margin::symmetric(20.0, 14.0))
         .show(ui, |ui| {
-            ui.set_min_width(full_w - 8.0);
+            ui.set_min_width(ui.available_width());
             ui.label(
                 RichText::new("PROPERTIES")
                     .font(f_sb(10.0))
@@ -2320,7 +2565,6 @@ fn ghost_btn(ui: &mut Ui, label: &str, theme: &Theme) -> egui::Response {
 }
 
 fn detail_services(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
-    let full_w = ui.available_width();
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
@@ -2329,7 +2573,7 @@ fn detail_services(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
         .show(ui, |ui| {
             // Force the card to span the whole column, otherwise the narrow
             // monospace UUID strings would let it collapse into a thin box.
-            ui.set_min_width(full_w - 8.0);
+            ui.set_min_width(ui.available_width());
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new("SERVICES")
