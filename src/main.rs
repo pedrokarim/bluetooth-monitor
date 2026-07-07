@@ -92,7 +92,12 @@ fn main() -> eframe::Result<()> {
             .with_inner_size([960.0, 740.0])
             .with_min_inner_size([620.0, 460.0])
             .with_title("Bluetooth Monitor")
-            .with_icon(icon),
+            .with_icon(icon)
+            // Client-side decorations: hide the OS title bar so the app can
+            // paint its own (see ui::titlebar).
+            .with_decorations(false)
+            .with_resizable(true)
+            .with_transparent(false),
         ..Default::default()
     };
 

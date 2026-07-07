@@ -230,27 +230,35 @@ pub fn render_splash(ctx: &egui::Context, ui_state: &UiState, elapsed: f32) {
 pub fn render(ctx: &egui::Context, state: &AppState, ui_state: &mut UiState) {
     let theme = ui_state.theme;
 
-    // Paint the gradient across the *whole* screen buffer up front so no
-    // pixel row can ever end up transparent (the alpha-blended status bar
-    // fill was letting the wallpaper show through the last few pixels).
+    // ── Titlebar pinned to the top of the window ─────────────────────
+    let logo_tex = ui_state.icons.as_ref().map(|i| i.logo.clone());
+    egui::TopBottomPanel::top("titlebar")
+        .exact_height(TITLEBAR_H)
+        .show_separator_line(false)
+        .frame(egui::Frame::none().fill(darken(theme.bg_top, 0.7)))
+        .show(ctx, |ui| {
+            titlebar(ctx, ui, &theme, logo_tex.as_ref());
+        });
+
+    // ── Status bar pinned to the bottom of the window ────────────────
+    egui::TopBottomPanel::bottom("statusbar")
+        .exact_height(34.0)
+        .show_separator_line(false)
+        .frame(
+            egui::Frame::none()
+                .fill(darken(theme.bg_bot, 0.55))
+                .inner_margin(Margin::symmetric(24.0, 8.0)),
+        )
+        .show(ctx, |ui| {
+            status_bar(ui, state, &theme);
+        });
+
+    // ── Everything else fills what's left ────────────────────────────
     egui::CentralPanel::default()
         .frame(egui::Frame::none())
         .show(ctx, |ui| {
-            let screen = ctx.screen_rect();
-            theme::paint_background(ui.painter(), screen, &theme);
-
-            // Pre-paint the whole bottom strip with the same solid fill we
-            // give to the status bar, so any gap between the widget layout
-            // and the real window edge (right-side scroll gutter or a few
-            // px at the very bottom) stays opaque instead of showing the
-            // gradient underneath.
-            const STATUS_STRIP_H: f32 = 40.0;
-            let bar_fill = darken(theme.bg_bot, 0.55);
-            let strip = Rect::from_min_max(
-                Pos2::new(screen.min.x, screen.max.y - STATUS_STRIP_H),
-                screen.max,
-            );
-            ui.painter().rect_filled(strip, Rounding::ZERO, bar_fill);
+            // Paint the gradient behind everything in the central area.
+            theme::paint_background(ui.painter(), ui.max_rect(), &theme);
 
             // Header row
             egui::Frame::none()
@@ -259,40 +267,25 @@ pub fn render(ctx: &egui::Context, state: &AppState, ui_state: &mut UiState) {
                     header(ui, state, ui_state);
                 });
 
-            ui.add_space(4.0);
-
-            // The status bar has its own inner_margin (24,10) plus a full row
-            // of ~14px text — reserve enough vertical space for the frame's
-            // outer height so the body doesn't push it below the viewport.
-            const STATUS_OUTER_H: f32 = 40.0;
-            let body_inner_h = (ui.available_height() - STATUS_OUTER_H).max(300.0);
-
+            // Body content — fills the rest of the central panel. Everything
+            // inside scrolls if the content is taller than the viewport.
             egui::Frame::none()
                 .inner_margin(Margin::symmetric(28.0, 0.0))
                 .show(ui, |ui| {
-                    // set both min and max so children lay out against a
-                    // deterministic viewport height
-                    ui.set_min_height(body_inner_h);
-                    ui.set_max_height(body_inner_h);
-                    match ui_state.tab {
-                        Tab::Dashboard => dashboard(ui, state, ui_state),
-                        Tab::Discover => discover(ui, state, ui_state),
-                        Tab::Detail => detail(ui, state, ui_state),
-                        Tab::Settings => settings(ui, state, ui_state),
-                    }
-                });
-
-            // Status bar at bottom — opaque solid fill mixed from the theme's
-            // background, so it can't turn transparent regardless of the
-            // renderer's alpha handling.
-            let bar_fill = darken(theme.bg_bot, 0.55);
-            egui::Frame::none()
-                .fill(bar_fill)
-                .inner_margin(Margin::symmetric(24.0, 8.0))
-                .show(ui, |ui| {
-                    ui.set_min_width(ui.available_width());
-                    ui.set_min_height(20.0);
-                    status_bar(ui, state, &theme);
+                    egui::ScrollArea::vertical()
+                        .id_source(match ui_state.tab {
+                            Tab::Dashboard => "body-dashboard",
+                            Tab::Discover => "body-discover",
+                            Tab::Detail => "body-detail",
+                            Tab::Settings => "body-settings",
+                        })
+                        .auto_shrink([false; 2])
+                        .show(ui, |ui| match ui_state.tab {
+                            Tab::Dashboard => dashboard(ui, state, ui_state),
+                            Tab::Discover => discover(ui, state, ui_state),
+                            Tab::Detail => detail(ui, state, ui_state),
+                            Tab::Settings => settings(ui, state, ui_state),
+                        });
                 });
         });
 }
@@ -303,6 +296,167 @@ fn darken(c: Color32, factor: f32) -> Color32 {
         (c.g() as f32 * factor).min(255.0) as u8,
         (c.b() as f32 * factor).min(255.0) as u8,
     )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Custom title bar (client-side decoration)
+// ─────────────────────────────────────────────────────────────
+
+const TITLEBAR_H: f32 = 32.0;
+const TITLEBAR_BTN_W: f32 = 46.0;
+
+fn titlebar(ctx: &egui::Context, ui: &mut Ui, theme: &Theme, logo: Option<&egui::TextureHandle>) {
+    // Container is a TopBottomPanel that already fills its background —
+    // we just allocate the same rect so we can paint text and interact
+    // widgets against known coordinates.
+    let (rect, _) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), TITLEBAR_H), Sense::hover());
+    ui.painter().line_segment(
+        [
+            egui::pos2(rect.min.x, rect.max.y - 0.5),
+            egui::pos2(rect.max.x, rect.max.y - 0.5),
+        ],
+        Stroke::new(1.0, theme.card_outline),
+    );
+
+    // Left: logo + wordmark. Logo is the embedded Bluetooth glyph tinted
+    // to teal so it reads as an identity mark, not a passive icon.
+    let mut cursor_x = rect.min.x + 12.0;
+    if let Some(tex) = logo {
+        let size = 16.0f32;
+        let logo_rect = Rect::from_center_size(
+            egui::pos2(cursor_x + size / 2.0, rect.center().y),
+            egui::vec2(size, size),
+        );
+        ui.painter().image(
+            tex.id(),
+            logo_rect,
+            Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+            theme.teal,
+        );
+        cursor_x = logo_rect.max.x + 8.0;
+    }
+    ui.painter().text(
+        egui::pos2(cursor_x, rect.center().y),
+        Align2::LEFT_CENTER,
+        "BLUETOOTH MONITOR",
+        f_sb(10.5),
+        theme.text_muted,
+    );
+
+    // Right-anchored window control buttons: min / max·restore / close
+    let close_rect = Rect::from_min_size(
+        egui::pos2(rect.max.x - TITLEBAR_BTN_W, rect.min.y),
+        egui::vec2(TITLEBAR_BTN_W, TITLEBAR_H),
+    );
+    let max_rect = Rect::from_min_size(
+        egui::pos2(rect.max.x - TITLEBAR_BTN_W * 2.0, rect.min.y),
+        egui::vec2(TITLEBAR_BTN_W, TITLEBAR_H),
+    );
+    let min_rect = Rect::from_min_size(
+        egui::pos2(rect.max.x - TITLEBAR_BTN_W * 3.0, rect.min.y),
+        egui::vec2(TITLEBAR_BTN_W, TITLEBAR_H),
+    );
+
+    let is_maximized = ctx
+        .input(|i| i.viewport().maximized)
+        .unwrap_or(false);
+
+    if titlebar_button(ui, min_rect, TitleGlyph::Min, theme, false).clicked() {
+        ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+    }
+    let max_glyph = if is_maximized {
+        TitleGlyph::Restore
+    } else {
+        TitleGlyph::Max
+    };
+    if titlebar_button(ui, max_rect, max_glyph, theme, false).clicked() {
+        ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!is_maximized));
+    }
+    if titlebar_button(ui, close_rect, TitleGlyph::Close, theme, true).clicked() {
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+    }
+
+    // Drag area — everything between the title text and the window controls.
+    let drag_rect = Rect::from_min_max(
+        egui::pos2(rect.min.x, rect.min.y),
+        egui::pos2(min_rect.min.x, rect.max.y),
+    );
+    let drag_resp = ui.interact(drag_rect, egui::Id::new("titlebar_drag"), Sense::click_and_drag());
+    if drag_resp.double_clicked() {
+        ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!is_maximized));
+    } else if drag_resp.drag_started_by(egui::PointerButton::Primary) {
+        ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
+    }
+}
+
+#[derive(Copy, Clone)]
+enum TitleGlyph {
+    Min,
+    Max,
+    Restore,
+    Close,
+}
+
+fn titlebar_button(ui: &mut Ui, rect: Rect, glyph: TitleGlyph, theme: &Theme, danger: bool) -> egui::Response {
+    let id = ui.id().with(("titlebar", rect.min.x as i32));
+    let resp = ui.interact(rect, id, Sense::click());
+    let painter = ui.painter();
+
+    let hover_fill = if danger {
+        Color32::from_rgb(0xd8, 0x35, 0x50)
+    } else {
+        theme.card_strong
+    };
+    if resp.hovered() {
+        painter.rect_filled(rect, Rounding::ZERO, hover_fill);
+    }
+
+    let fg = if resp.hovered() {
+        theme.text
+    } else {
+        theme.text_muted
+    };
+    let stroke = Stroke::new(1.4, fg);
+    let center = rect.center();
+    let s = 5.0; // half-size of the glyph
+
+    match glyph {
+        TitleGlyph::Min => {
+            painter.line_segment(
+                [egui::pos2(center.x - s, center.y + 2.0), egui::pos2(center.x + s, center.y + 2.0)],
+                stroke,
+            );
+        }
+        TitleGlyph::Max => {
+            let r = Rect::from_center_size(center, egui::vec2(s * 2.0, s * 2.0));
+            painter.rect_stroke(r, Rounding::ZERO, stroke);
+        }
+        TitleGlyph::Restore => {
+            // Two offset squares indicating "unmaximise"
+            let a = Rect::from_center_size(
+                center + egui::vec2(1.5, -1.5),
+                egui::vec2(s * 2.0, s * 2.0),
+            );
+            let b = Rect::from_center_size(
+                center + egui::vec2(-1.5, 1.5),
+                egui::vec2(s * 2.0, s * 2.0),
+            );
+            painter.rect_stroke(a, Rounding::ZERO, stroke);
+            painter.rect_stroke(b, Rounding::ZERO, stroke);
+        }
+        TitleGlyph::Close => {
+            painter.line_segment(
+                [egui::pos2(center.x - s, center.y - s), egui::pos2(center.x + s, center.y + s)],
+                stroke,
+            );
+            painter.line_segment(
+                [egui::pos2(center.x - s, center.y + s), egui::pos2(center.x + s, center.y - s)],
+                stroke,
+            );
+        }
+    }
+    resp
 }
 
 fn status_bar(ui: &mut Ui, state: &AppState, theme: &Theme) {
@@ -373,17 +527,16 @@ fn header(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
     let icons = ui_state.icons.clone();
     ui.horizontal(|ui| {
         let is_deep = matches!(ui_state.tab, Tab::Detail | Tab::Settings | Tab::Discover);
-        let tex = icons
-            .as_ref()
-            .map(|i| if is_deep { &i.back } else { &i.menu });
-        if png_chip(ui, tex, &theme, false).clicked() {
-            ui_state.tab = if is_deep {
-                Tab::Dashboard
-            } else {
-                Tab::Settings
-            };
+        if is_deep {
+            // Back-arrow chip only appears on child screens. On Dashboard the
+            // cog + radar chips on the right already own navigation, so a
+            // second left-side chip that also opens Settings is just noise.
+            let tex = icons.as_ref().map(|i| &i.back);
+            if png_chip(ui, tex, &theme, false).clicked() {
+                ui_state.tab = Tab::Dashboard;
+            }
+            ui.add_space(14.0);
         }
-        ui.add_space(14.0);
 
         ui.vertical(|ui| {
             let title = match ui_state.tab {
@@ -906,14 +1059,13 @@ fn filter_devices(devices: &[DeviceInfo], filter: DeviceFilter) -> Vec<DeviceInf
 // Donut card
 // ─────────────────────────────────────────────────────────────
 
-fn donut_card(ui: &mut Ui, connected: &[&DeviceInfo], theme: &Theme, target_h: f32) {
+fn donut_card(ui: &mut Ui, connected: &[&DeviceInfo], theme: &Theme, _target_h: f32) {
     egui::Frame::none()
         .fill(theme.card)
         .stroke(Stroke::new(1.0, theme.card_outline))
         .rounding(Rounding::same(theme.card_radius))
         .inner_margin(Margin::symmetric(22.0, 22.0))
         .show(ui, |ui| {
-            ui.set_min_height(target_h - 8.0);
             ui.vertical_centered(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(
@@ -1106,7 +1258,7 @@ fn device_list_card(
     total: usize,
     state: &AppState,
     theme: &Theme,
-    target_h: f32,
+    _target_h: f32,
     ui_state: &mut UiState,
 ) {
     egui::Frame::none()
@@ -1115,7 +1267,6 @@ fn device_list_card(
         .rounding(Rounding::same(theme.card_radius))
         .inner_margin(Margin::symmetric(24.0, 20.0))
         .show(ui, |ui| {
-            ui.set_min_height(target_h - 8.0);
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new("DEVICES")
@@ -1145,6 +1296,7 @@ fn device_list_card(
 
             let mut ci = 0usize;
             let chevron_tex = ui_state.icons.as_ref().map(|i| i.chevron.clone());
+
             for (i, d) in devices.iter().enumerate() {
                 let accent = if d.connected {
                     let c = theme.accent_for(ci);
@@ -1612,7 +1764,7 @@ fn radar_card(
     elapsed: f32,
     n_found: usize,
     state: &AppState,
-    target_h: f32,
+    _target_h: f32,
 ) {
     egui::Frame::none()
         .fill(theme.card)
@@ -1620,7 +1772,6 @@ fn radar_card(
         .rounding(Rounding::same(theme.card_radius))
         .inner_margin(Margin::symmetric(22.0, 22.0))
         .show(ui, |ui| {
-            ui.set_min_height(target_h - 8.0);
             ui.vertical_centered(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(
@@ -1784,7 +1935,7 @@ fn nearby_list_card(
     nearby: &[DiscoveredDevice],
     theme: &Theme,
     state: &AppState,
-    target_h: f32,
+    _target_h: f32,
 ) {
     egui::Frame::none()
         .fill(theme.card)
@@ -1792,7 +1943,6 @@ fn nearby_list_card(
         .rounding(Rounding::same(theme.card_radius))
         .inner_margin(Margin::symmetric(24.0, 20.0))
         .show(ui, |ui| {
-            ui.set_min_height(target_h - 8.0);
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new("NEARBY")
@@ -1831,17 +1981,12 @@ fn nearby_list_card(
                     );
                 });
             } else {
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false; 2])
-                    .max_height(target_h - 200.0)
-                    .show(ui, |ui| {
-                        for (i, d) in nearby.iter().enumerate() {
-                            nearby_row(ui, d, theme, state);
-                            if i + 1 < nearby.len() {
-                                hairline(ui, theme);
-                            }
-                        }
-                    });
+                for (i, d) in nearby.iter().enumerate() {
+                    nearby_row(ui, d, theme, state);
+                    if i + 1 < nearby.len() {
+                        hairline(ui, theme);
+                    }
+                }
             }
 
             // Tip card — always visible at the bottom of the right column
@@ -1968,40 +2113,37 @@ fn detail(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
         }
     };
 
-    egui::ScrollArea::vertical()
-        .auto_shrink([false; 2])
-        .show(ui, |ui| {
-            detail_hero(ui, &device, &theme);
-            ui.add_space(14.0);
-            if let Some(components) = device.components.as_ref() {
-                detail_components(ui, components, &theme);
-                ui.add_space(14.0);
-            }
-            detail_metrics(ui, &device, &theme);
-            ui.add_space(14.0);
-            detail_signal_chart(ui, &device, &theme, state);
-            ui.add_space(14.0);
-            detail_info(ui, &device, &theme);
-            ui.add_space(14.0);
-            detail_actions(ui, &device, &theme, state);
+    detail_hero(ui, &device, &theme);
+    ui.add_space(14.0);
+    if let Some(components) = device.components.as_ref() {
+        detail_components(ui, components, &theme);
+        ui.add_space(14.0);
+    }
+    detail_metrics(ui, &device, &theme);
+    ui.add_space(14.0);
+    detail_signal_chart(ui, &device, &theme, state);
+    ui.add_space(14.0);
+    detail_info(ui, &device, &theme);
+    ui.add_space(14.0);
+    detail_actions(ui, &device, &theme, state);
 
-            // MMA / Xiaomi SPP probe panel — only surfaced when the device
-            // advertises the Xiaomi SPP UUID, so it stays hidden for
-            // AirPods / Sony / etc.
-            if device
-                .uuids
-                .iter()
-                .any(|u| u.eq_ignore_ascii_case(crate::xiaomi_mma::XIAOMI_SPP_UUID))
-            {
-                ui.add_space(14.0);
-                detail_mma_probe(ui, &device, &theme, state);
-            }
+    // MMA / Xiaomi SPP probe panel — only surfaced when the device
+    // advertises the Xiaomi SPP UUID, so it stays hidden for
+    // AirPods / Sony / etc.
+    if device
+        .uuids
+        .iter()
+        .any(|u| u.eq_ignore_ascii_case(crate::xiaomi_mma::XIAOMI_SPP_UUID))
+    {
+        ui.add_space(14.0);
+        detail_mma_probe(ui, &device, &theme, state);
+    }
 
-            if !device.uuids.is_empty() {
-                ui.add_space(14.0);
-                detail_services(ui, &device, &theme);
-            }
-        });
+    if !device.uuids.is_empty() {
+        ui.add_space(14.0);
+        detail_services(ui, &device, &theme);
+    }
+    ui.add_space(24.0);
 }
 
 fn detail_mma_probe(ui: &mut Ui, d: &DeviceInfo, theme: &Theme, state: &AppState) {
@@ -2605,95 +2747,92 @@ fn detail_services(ui: &mut Ui, d: &DeviceInfo, theme: &Theme) {
 
 fn settings(ui: &mut Ui, state: &AppState, ui_state: &mut UiState) {
     let theme = ui_state.theme;
-    egui::ScrollArea::vertical()
-        .auto_shrink([false; 2])
-        .show(ui, |ui| {
-            settings_group(ui, "APPEARANCE", &theme, |ui| {
-                theme_picker(ui, ui_state, state);
-            });
-            ui.add_space(18.0);
+    // The body-level ScrollArea in `render()` handles overflow for every tab.
+    settings_group(ui, "APPEARANCE", &theme, |ui| {
+        theme_picker(ui, ui_state, state);
+    });
+    ui.add_space(18.0);
 
-            settings_group(ui, "PREFERENCES", &theme, |ui| {
-                let mut cfg = state.config.lock().unwrap().clone();
-                let mut changed = false;
-                changed |= toggle_row(
-                    ui,
-                    "🔋",
-                    "Low battery alert",
-                    "Notify when a connected device drops below the threshold",
-                    &mut cfg.low_battery_alert,
-                    &theme,
-                );
-                changed |= toggle_row(
-                    ui,
-                    "🖼",
-                    "Close to tray",
-                    "Keep the app running in the background when the window is closed",
-                    &mut cfg.close_to_tray,
-                    &theme,
-                );
-                let before_autostart = cfg.autostart;
-                let autostart_changed = toggle_row(
-                    ui,
-                    "🚀",
-                    "Launch at login",
-                    "Start with the system session",
-                    &mut cfg.autostart,
-                    &theme,
-                );
-                changed |= autostart_changed;
-                changed |= interval_row(
-                    ui,
-                    "⏱",
-                    "Refresh interval",
-                    "How often devices are polled",
-                    &mut cfg.refresh_interval_secs,
-                    &theme,
-                );
-                if changed {
-                    *state.config.lock().unwrap() = cfg.clone();
-                    cfg.save();
-                    if autostart_changed && cfg.autostart != before_autostart {
-                        if let Err(e) = crate::autostart::set(cfg.autostart) {
-                            *state.last_error.lock().unwrap() =
-                                Some(format!("Autostart: {e}"));
-                        }
-                    }
+    settings_group(ui, "PREFERENCES", &theme, |ui| {
+        let mut cfg = state.config.lock().unwrap().clone();
+        let mut changed = false;
+        changed |= toggle_row(
+            ui,
+            "🔋",
+            "Low battery alert",
+            "Notify when a connected device drops below the threshold",
+            &mut cfg.low_battery_alert,
+            &theme,
+        );
+        changed |= toggle_row(
+            ui,
+            "🖼",
+            "Close to tray",
+            "Keep the app running in the background when the window is closed",
+            &mut cfg.close_to_tray,
+            &theme,
+        );
+        let before_autostart = cfg.autostart;
+        let autostart_changed = toggle_row(
+            ui,
+            "🚀",
+            "Launch at login",
+            "Start with the system session",
+            &mut cfg.autostart,
+            &theme,
+        );
+        changed |= autostart_changed;
+        changed |= interval_row(
+            ui,
+            "⏱",
+            "Refresh interval",
+            "How often devices are polled",
+            &mut cfg.refresh_interval_secs,
+            &theme,
+        );
+        if changed {
+            *state.config.lock().unwrap() = cfg.clone();
+            cfg.save();
+            if autostart_changed && cfg.autostart != before_autostart {
+                if let Err(e) = crate::autostart::set(cfg.autostart) {
+                    *state.last_error.lock().unwrap() = Some(format!("Autostart: {e}"));
                 }
-            });
-            ui.add_space(18.0);
+            }
+        }
+    });
+    ui.add_space(18.0);
 
-            settings_group(ui, "ADAPTER", &theme, |ui| {
-                let powered = state.adapter_powered.load(Ordering::Relaxed);
-                let adapter_name = state
-                    .adapter_name
-                    .lock()
-                    .unwrap()
-                    .clone()
-                    .unwrap_or_else(|| "hci0".into());
-                info_row(ui, "📡", "Controller", &adapter_name, &theme);
-                info_row(
-                    ui,
-                    "⚡",
-                    "Powered",
-                    if powered { "yes" } else { "no" },
-                    &theme,
-                );
-            });
-            ui.add_space(18.0);
+    settings_group(ui, "ADAPTER", &theme, |ui| {
+        let powered = state.adapter_powered.load(Ordering::Relaxed);
+        let adapter_name = state
+            .adapter_name
+            .lock()
+            .unwrap()
+            .clone()
+            .unwrap_or_else(|| "hci0".into());
+        info_row(ui, "📡", "Controller", &adapter_name, &theme);
+        info_row(
+            ui,
+            "⚡",
+            "Powered",
+            if powered { "yes" } else { "no" },
+            &theme,
+        );
+    });
+    ui.add_space(18.0);
 
-            settings_group(ui, "ABOUT", &theme, |ui| {
-                info_row(
-                    ui,
-                    "🔵",
-                    "Bluetooth Monitor",
-                    env!("CARGO_PKG_VERSION"),
-                    &theme,
-                );
-                info_row(ui, "🛠", "Engine", "eframe · egui", &theme);
-                info_row(ui, "📚", "Stack", "bluer · tokio · ksni", &theme);
-            });
-        });
+    settings_group(ui, "ABOUT", &theme, |ui| {
+        info_row(
+            ui,
+            "🔵",
+            "Bluetooth Monitor",
+            env!("CARGO_PKG_VERSION"),
+            &theme,
+        );
+        info_row(ui, "🛠", "Engine", "eframe · egui", &theme);
+        info_row(ui, "📚", "Stack", "bluer · tokio · ksni", &theme);
+    });
+    ui.add_space(24.0);
 }
 
 fn settings_group(ui: &mut Ui, title: &str, theme: &Theme, add: impl FnOnce(&mut Ui)) {
